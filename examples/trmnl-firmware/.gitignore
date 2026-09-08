@@ -1,0 +1,9 @@
+# Build output
+build/
+sdkconfig
+sdkconfig.old
+managed_components/
+dependencies.lock
+
+# Wi-Fi credentials - copy trmnl_credentials.h.example and fill it in
+main/trmnl_credentials.h

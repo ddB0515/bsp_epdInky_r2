@@ -1,0 +1,24 @@
+dependencies:
+  idf: ">=5.5"
+
+  # JSON for the MQTT discovery payloads and the captive portal's /connect
+  # and /scan bodies. Same choice the trmnl-firmware example makes, and for
+  # the same reason: no Arduino code anywhere in this tree, so ArduinoJson
+  # was never a candidate.
+  espressif/cjson: "^1.7.18"
+
+  # The MQTT client. In upstream ESP-IDF this used to be an in-tree
+  # component; as of this IDF release it ships only through the component
+  # registry under this name, though it is the same esp-mqtt client IDF has
+  # always used - nothing about ha_mqtt.c's use of it is third-party.
+  espressif/mqtt: "^1.0.0"
+
+# What this example does NOT need from the registry, and why:
+#
+#   espressif/libpng, espressif/zlib -> not needed: main/ha_image.c decodes
+#     PNG over the ESP32-P4 boot ROM's own tinfl_decompress, same as the
+#     trmnl-firmware example this was adapted from.
+#   joltwallet/littlefs, a SD-card FATFS mount -> not needed: this firmware
+#     has no offline image cache by decision (v1 always fetches fresh each
+#     cycle), so there is nothing to store between wakes beyond what NVS
+#     already holds.

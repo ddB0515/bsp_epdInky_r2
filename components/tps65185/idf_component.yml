@@ -1,0 +1,6 @@
+version: "0.0.1"
+description: Texas Instruments TPS65185x Power Management Integrated Circuit (PMIC) driver
+url: https://github.com/ddB0515/esp-bsp/tree/master/components/TPS65185
+
+dependencies:
+  idf: ">=5.5"

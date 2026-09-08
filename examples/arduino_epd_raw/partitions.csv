@@ -1,0 +1,12 @@
+# epdInky ESP32-P4 - Arduino + FastEPD partition table
+#
+# Flash is 16 MB (W25Q128JVS). The default single-app table gives the
+# application 1 MB, which the Arduino core alone overruns.
+#
+# nvs and phy_init keep their default offsets and sizes so data already stored
+# on the device survives this change.
+#
+# Name,     Type, SubType, Offset,   Size,     Flags
+nvs,        data, nvs,     0x9000,   0x6000,
+phy_init,   data, phy,     0xf000,   0x1000,
+factory,    app,  factory, 0x10000,  4M,

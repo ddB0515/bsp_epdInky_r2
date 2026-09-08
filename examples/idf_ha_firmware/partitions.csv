@@ -1,0 +1,17 @@
+# HA firmware on epdInky ESP32-P4/C6 rev.2 (TFT+touch variant) - partition table
+#
+# Flash is 16 MB (W25Q128JVS). No OTA slots: this v1 example has no update
+# mechanism - reflash over USB to update. No SD-card storage either - the
+# dashboard is a compiled-in tile list and a live WebSocket connection, so
+# there's nothing to cache between boots beyond what NVS already holds
+# (Wi-Fi credentials, the Home Assistant URL/token).
+#
+# The factory app slot is larger than the e-paper firmware's: LVGL, the
+# WebSocket client and cJSON add real code size on top of the same Wi-Fi/BLE
+# stack.
+#
+# Name,     Type, SubType, Offset,   Size,     Flags
+nvs,        data, nvs,     0x9000,   0x6000,
+phy_init,   data, phy,     0xf000,   0x1000,
+factory,    app,  factory, 0x10000,  0x400000,
+storage,    data, spiffs,  0x410000, 0xBF0000,

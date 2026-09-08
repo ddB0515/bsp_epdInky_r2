@@ -1,0 +1,70 @@
+CONFIG_IDF_TARGET="esp32p4"
+
+# This board carries rev v1.0 silicon. IDF 6.0 defaults the minimum to v3.01,
+# which produces a bootloader the chip refuses to run. The REV_MIN_100 choice
+# is gated behind SELECTS_REV_LESS_V3, so both are needed.
+CONFIG_ESP32P4_SELECTS_REV_LESS_V3=y
+CONFIG_ESP32P4_REV_MIN_100=y
+
+CONFIG_ESPTOOLPY_FLASHSIZE_16MB=y
+CONFIG_ESPTOOLPY_FLASHSIZE="16MB"
+CONFIG_ESPTOOLPY_FLASHFREQ_80M=y
+
+# PSRAM is not optional here. A 1872x1404 panel at 4bpp needs 1.3 MB for the
+# current plane and the same again for the previous one, which FastEPD keeps so
+# it can work out what actually changed.
+CONFIG_SPIRAM=y
+CONFIG_SPIRAM_MODE_HEX=y
+CONFIG_SPIRAM_SPEED_200M=y
+CONFIG_SPIRAM_USE_MALLOC=y
+CONFIG_SPIRAM_MALLOC_ALWAYSINTERNAL=16384
+CONFIG_SPIRAM_MALLOC_RESERVE_INTERNAL=32768
+
+CONFIG_ESP_DEFAULT_CPU_FREQ_MHZ_360=y
+
+CONFIG_FREERTOS_HZ=1000
+
+# The demo embeds a full-panel 4bpp image (1.3 MB), which overflows the
+# default 1 MB app partition.
+CONFIG_PARTITION_TABLE_CUSTOM=y
+CONFIG_PARTITION_TABLE_CUSTOM_FILENAME="partitions.csv"
+
+# ---------------------------------------------------------------------------
+# LVGL, configured through Kconfig rather than lv_conf.h.
+#
+# The ESP-IDF LVGL component sets LV_CONF_SKIP and takes its configuration from
+# here, so a main/lv_conf.h in the project is silently ignored - an easy way to
+# spend an afternoon wondering why a setting has no effect.
+# ---------------------------------------------------------------------------
+CONFIG_LV_CONF_SKIP=y
+
+# 8-bit colour depth: LVGL's native format becomes one byte per pixel (L8).
+# The panel is 4bpp greyscale, so the conversion is a shift rather than a
+# colour space change. RGB565 would mean converting and tone mapping every
+# pixel on every flush, for a panel that cannot show colour.
+CONFIG_LV_COLOR_DEPTH_8=y
+CONFIG_LV_DRAW_SW_SUPPORT_L8=y
+
+# Larger fonts than a backlit display needs: 1872x1404 over 10.3 inches makes
+# the default 14 px font physically tiny, and E Ink's lower contrast makes thin
+# strokes harder to read.
+CONFIG_LV_FONT_MONTSERRAT_14=y
+CONFIG_LV_FONT_MONTSERRAT_24=y
+CONFIG_LV_FONT_MONTSERRAT_48=y
+CONFIG_LV_FONT_DEFAULT_MONTSERRAT_24=y
+
+CONFIG_LV_USE_LOG=n
+
+# LVGL renders deep call chains and the EPD driver builds rows on the stack.
+# The 3584-byte default overflows during the first refresh with a stack
+# protection fault, which looks like a memory corruption bug rather than the
+# stack sizing issue it is.
+CONFIG_ESP_MAIN_TASK_STACK_SIZE=16384
+
+# An EPD refresh is about a second of uninterruptible hardware sequencing on
+# one task, which starves that core's idle task. The default task watchdog
+# treats that as a fault and resets the chip, so the deep clean never finishes
+# and the board reboots forever. Stop watching the idle tasks; the panel work
+# is genuinely long, not stuck.
+CONFIG_ESP_TASK_WDT_CHECK_IDLE_TASK_CPU0=n
+CONFIG_ESP_TASK_WDT_CHECK_IDLE_TASK_CPU1=n

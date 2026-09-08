@@ -1,0 +1,37 @@
+{
+    "idf.espIdfPath": "/home/dale/.espressif/v6.0.2/esp-idf",
+    "idf.toolsPath": "/home/dale/.espressif/tools",
+    "idf.pythonInstallPath": "/home/dale/.espressif/tools/python/v6.0.2/venv/bin/python",
+    "idf.port": "/dev/ttyACM0",
+    "idf.flashType": "UART",
+    "idf.openOcdConfigs": [
+        "board/esp32p4-builtin.cfg"
+    ],
+    "idf.customExtraVars": {
+        "IDF_TARGET": "esp32p4"
+    },
+    "files.associations": {
+        "esp_lcd_ek79007.h": "c",
+        "cstdlib": "c",
+        "gc9503p.h": "c",
+        "sgm37604a.h": "c",
+        "stdbool.h": "c"
+    },
+    "idf.monitorPort": "/dev/ttyACM0",
+    "idf.currentSetup": "/home/dale/.espressif/v6.0.2/esp-idf",
+    "chat.tools.terminal.autoApprove": {
+        "/^which pdftotext pdfimages mutool qpdf python3; python3 -c \"import pypdf; print\\('pypdf ok'\\)\" 2>&1 \\| tail -1$/": {
+            "approve": true,
+            "matchCommandLine": true
+        },
+        "/^cd /tmp && pdftotext -layout /home/dale/Downloads/epdInky-ESP32-P4C6\\.r2-schematic\\.pdf schem\\.txt && wc -l schem\\.txt && head -100 schem\\.txt$/": {
+            "approve": true,
+            "matchCommandLine": true
+        },
+        "pdfimages": true,
+        "/^timeout 70 python3 -c \"\nimport serial, time\ns = serial\\.Serial\\('/dev/ttyACM0', 115200, timeout=1\\)\ns\\.setDTR\\(False\\); s\\.setRTS\\(True\\); time\\.sleep\\(0\\.1\\); s\\.setRTS\\(False\\); time\\.sleep\\(0\\.1\\)\nend=time\\.time\\(\\)\\+60; buf=\\[\\]\nwhile time\\.time\\(\\)<end:\n    try: d=s\\.readline\\(\\)\n    except Exception: break\n    if d: buf\\.append\\(d\\.decode\\('utf-8','replace'\\)\\)\ns\\.close\\(\\)\ntxt=''\\.join\\(buf\\)\ni=txt\\.find\\('--- BLE ---'\\)\nprint\\(txt\\[i:i\\+2600\\] if i>0 else '\\(BLE section not reached\\)\\\\n'\\+txt\\[-2500:\\]\\)\n\" 2>&1 \\| head -60$/": {
+            "approve": true,
+            "matchCommandLine": true
+        }
+    }
+}

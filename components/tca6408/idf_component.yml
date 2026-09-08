@@ -1,0 +1,6 @@
+version: "0.0.1"
+description: Texas Instruments TCA6408 I/O expander with interrupt, reset & config registers driver
+url: https://github.com/ddB0515/esp-bsp/tree/master/components/tca6408
+
+dependencies:
+  idf: ">=5.5"

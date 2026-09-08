@@ -1,0 +1,108 @@
+/*
+ * The provisioning page served at "/".
+ *
+ * Adapted from upstream's lib/wificaptive/portal/index.html (supplied
+ * separately for reference, not vendored in this tree) with everything this
+ * board has no use for stripped out: WPA2-Enterprise fields, 5 GHz/modem band
+ * selection, static IP, the custom-API-server field, hostname/NTP settings,
+ * the "Advanced" page, and the embedded logo. What is left is the part that
+ * matters - pick a network or type one in, enter a password, connect - kept
+ * close to upstream's own markup and JS rather than rewritten from scratch,
+ * since that markup already solves real problems (e.g. the signal-strength
+ * icons, the password show/hide toggle).
+ *
+ * Served plain, not gzipped: this is a one-time page over a direct SoftAP
+ * hop, not a bandwidth-constrained path.
+ */
+#pragma once
+
+static const char TRMNL_PORTAL_HTML[] =
+"<!DOCTYPE html>\n"
+"<html>\n"
+"<head>\n"
+"<meta name=\"viewport\" content=\"width=device-width, initial-scale=1\">\n"
+"<title>TRMNL Wi-Fi Setup</title>\n"
+"<style>\n"
+"table{border-collapse:collapse;background:#fff;border-radius:4px;overflow:hidden;width:100%;margin:0 auto}\n"
+"table td,table th{padding-left:8px;text-align:left}\n"
+"table td{text-align:right}\n"
+"table tbody tr{height:30px;border-bottom:1px solid #bbb;font-size:16px}\n"
+"table tbody.hoverable tr:hover{background:#f2f2f2;cursor:pointer}\n"
+".selected{background-color:#bbb}\n"
+"body{font:400 14px 'Calibri','Arial';margin:0}\n"
+"#loader-wrapper{display:none;position:fixed;top:0;right:0;bottom:0;left:0;background-color:rgba(0,0,0,.5);z-index:9999}\n"
+"#loader{position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);width:60px;height:60px}\n"
+"#loader:before{content:\"\";display:block;position:absolute;border-style:solid;border-color:#fff;border-top-color:transparent;border-width:6px;border-radius:50%;width:60px;height:60px;top:10px;left:10px;animation:spin 1s linear infinite}\n"
+"@keyframes spin{0%{transform:rotate(0)}100%{transform:rotate(360deg)}}\n"
+".div-container{display:flex;flex-direction:column;align-items:center;margin:30px}\n"
+".form-group{display:flex;flex-direction:column;align-items:flex-start;margin-bottom:20px;width:100%;position:relative}\n"
+"label{font-size:18px;margin-bottom:5px}\n"
+"input{border-width:1px;border-radius:.75rem;font-size:16px;padding:5px;width:100%;box-sizing:border-box}\n"
+"input:focus{outline:none;border:2px solid #f86527;border-radius:.75rem}\n"
+".button{color:#fff;border:none;padding:8px 18px;font-size:18px;border-radius:5px;cursor:pointer}\n"
+".button:disabled{opacity:.65}\n"
+".button-success{background-color:#f86527}\n"
+".button-primary{background-color:#e4eaf0;color:#212529}\n"
+".button-primary:hover:not([disabled]){background-color:#d7dfe8}\n"
+".button:hover:not([disabled]){filter:saturate(.8)}\n"
+"h1{text-align:center}\n"
+".alert-primary{color:#383d41;background-color:#e2e3e5;border-color:#d6d8db}\n"
+".alert-warning{color:#856404;background-color:#fff3cd;border-color:#ffeeba}\n"
+".alert{padding:.75rem 1.25rem;margin-bottom:1rem;border:1px solid transparent;border-radius:.25rem}\n"
+"#toggler{position:absolute;font-size:20px;right:10px;top:34px;cursor:pointer}\n"
+"caption{padding:.5rem 0;color:#6c757d;text-align:left}\n"
+".bi::before{display:inline-block;content:\"\";vertical-align:-.125em;background-repeat:no-repeat;background-size:1rem 1rem;width:20px;height:20px}\n"
+".bi-wifi::before{background-image:url(\"data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' fill='%23212529' viewBox='0 0 16 16'%3E%3Cpath d='M15.384 6.115a.485.485 0 0 0-.047-.736A12.44 12.44 0 0 0 8 3C5.259 3 2.723 3.882.663 5.379a.485.485 0 0 0-.048.736.52.52 0 0 0 .668.05A11.45 11.45 0 0 1 8 4c2.507 0 4.827.802 6.716 2.164.205.148.49.13.668-.049'/%3E%3Cpath d='M13.229 8.271a.482.482 0 0 0-.063-.745A9.46 9.46 0 0 0 8 6c-1.905 0-3.68.56-5.166 1.526a.48.48 0 0 0-.063.745.525.525 0 0 0 .652.065A8.46 8.46 0 0 1 8 7a8.46 8.46 0 0 1 4.576 1.336c.206.132.48.108.653-.065m-2.183 2.183c.226-.226.185-.605-.1-.75A6.5 6.5 0 0 0 8 9c-1.06 0-2.062.254-2.946.704-.285.145-.326.524-.1.75l.015.015c.16.16.407.19.611.09A5.5 5.5 0 0 1 8 10c.868 0 1.69.201 2.42.56.203.1.45.07.61-.091zM9.06 12.44c.196-.196.198-.52-.04-.66A2 2 0 0 0 8 11.5a2 2 0 0 0-1.02.28c-.238.14-.236.464-.04.66l.706.706a.5.5 0 0 0 .707 0l.707-.707z'/%3E%3C/svg%3E\")}\n"
+".bi-wifi-2::before{background-image:url(\"data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' fill='%23212529' viewBox='0 0 16 16'%3E%3Cpath d='M13.229 8.271c.216-.216.194-.578-.063-.745A9.46 9.46 0 0 0 8 6c-1.905 0-3.68.56-5.166 1.526a.48.48 0 0 0-.063.745.525.525 0 0 0 .652.065A8.46 8.46 0 0 1 8 7a8.46 8.46 0 0 1 4.577 1.336c.205.132.48.108.652-.065m-2.183 2.183c.226-.226.185-.605-.1-.75A6.5 6.5 0 0 0 8 9c-1.06 0-2.062.254-2.946.704-.285.145-.326.524-.1.75l.015.015c.16.16.408.19.611.09A5.5 5.5 0 0 1 8 10c.868 0 1.69.201 2.42.56.203.1.45.07.611-.091zM9.06 12.44c.196-.196.198-.52-.04-.66A2 2 0 0 0 8 11.5a2 2 0 0 0-1.02.28c-.238.14-.236.464-.04.66l.706.706a.5.5 0 0 0 .708 0l.707-.707z'/%3E%3C/svg%3E\")}\n"
+".bi-wifi-1::before{background-image:url(\"data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' fill='%23212529' viewBox='0 0 16 16'%3E%3Cpath d='M11.046 10.454c.226-.226.185-.605-.1-.75A6.5 6.5 0 0 0 8 9c-1.06 0-2.062.254-2.946.704-.285.145-.326.524-.1.75l.015.015c.16.16.407.19.611.09A5.5 5.5 0 0 1 8 10c.868 0 1.69.201 2.42.56.203.1.45.07.611-.091zM9.06 12.44c.196-.196.198-.52-.04-.66A2 2 0 0 0 8 11.5a2 2 0 0 0-1.02.28c-.238.14-.236.464-.04.66l.706.706a.5.5 0 0 0 .707 0l.708-.707z'/%3E%3C/svg%3E\")}\n"
+".bi-eye::before{background-image:url(\"data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' fill='%23212529' viewBox='0 0 16 16'%3E%3Cpath d='M16 8s-3-5.5-8-5.5S0 8 0 8s3 5.5 8 5.5S16 8 16 8M1.173 8a13 13 0 0 1 1.66-2.043C4.12 4.668 5.88 3.5 8 3.5s3.879 1.168 5.168 2.457A13 13 0 0 1 14.828 8q-.086.13-.195.288c-.335.48-.83 1.12-1.465 1.755C11.879 11.332 10.119 12.5 8 12.5s-3.879-1.168-5.168-2.457A13 13 0 0 1 1.172 8z'/%3E%3Cpath d='M8 5.5a2.5 2.5 0 1 0 0 5 2.5 2.5 0 0 0 0-5M4.5 8a3.5 3.5 0 1 1 7 0 3.5 3.5 0 0 1-7 0'/%3E%3C/svg%3E\")}\n"
+".bi-eye-slash::before{background-image:url(\"data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' fill='%23212529' viewBox='0 0 16 16'%3E%3Cpath d='M13.359 11.238C15.06 9.72 16 8 16 8s-3-5.5-8-5.5a7 7 0 0 0-2.79.588l.77.771A6 6 0 0 1 8 3.5c2.12 0 3.879 1.168 5.168 2.457A13 13 0 0 1 14.828 8q-.086.13-.195.288c-.335.48-.83 1.12-1.465 1.755q-.247.248-.517.486zm-2.943-2.62-1.646-1.646zM3.35 5.47q-.27.24-.518.487A13 13 0 0 0 1.172 8l.195.288c.335.48.83 1.12 1.465 1.755C4.121 11.332 5.881 12.5 8 12.5c.716 0 1.39-.133 2.02-.36l.77.772A7 7 0 0 1 8 13.5C3 13.5 0 8 0 8s.939-1.721 2.641-3.238zm10.296 8.884-12-12 .708-.708 12 12z'/%3E%3C/svg%3E\")}\n"
+".bi-lock::before{background-image:url(\"data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' fill='%23212529' viewBox='0 0 16 16'%3E%3Cpath d='M8 1a2 2 0 0 1 2 2v4H6V3a2 2 0 0 1 2-2m3 6V3a3 3 0 0 0-6 0v4a2 2 0 0 0-2 2v5a2 2 0 0 0 2 2h6a2 2 0 0 0 2-2V9a2 2 0 0 0-2-2M5 8h6a1 1 0 0 1 1 1v5a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1V9a1 1 0 0 1 1-1'/%3E%3C/svg%3E\")}\n"
+"</style>\n"
+"<script>\n"
+"function setRefreshButtonState(s){var b=document.getElementById('btnRefresh');b.disabled=s;b.textContent=s?'Rescanning...':'Refresh'}\n"
+"async function refresh(){setRefreshButtonState(true);document.getElementById('table-networks').innerHTML='';var i=document.getElementById('scanning-info');i.textContent='Scanning networks, please wait...';i.style.display='block';document.getElementById('scanning-loader').style.display='block';await getInfo()}\n"
+"async function getInfo(){var infoBox=document.getElementById('scanning-info');var loader=document.getElementById('scanning-loader');var r=await fetch('/scan').catch(function(){return null});if(!r||r.status!=200){loader.style.display='none';infoBox.textContent='Could not scan for networks. Enter your Wi-Fi name manually below.';setRefreshButtonState(false);return}var j=await r.json();infoBox.style.display='none';loader.style.display='none';setRefreshButtonState(false);j.networks.forEach(function(n){appendWifiToTable(n.name,n.open,n.rssi)});displayInfo('MAC: '+j.mac)}\n"
+"function appendWifiToTable(name,open,rssi){var row=document.createElement('tr');row.onclick=function(){onClickItemTable(this)};var th=document.createElement('th');var td=document.createElement('td');th.appendChild(document.createTextNode(name));row.appendChild(th);var ic=document.createElement('i');ic.classList.add('bi');if(rssi>-55)ic.classList.add('bi-wifi');else if(rssi>-70)ic.classList.add('bi-wifi-2');else ic.classList.add('bi-wifi-1');td.appendChild(ic);if(!open){var lock=document.createElement('i');lock.classList.add('bi');lock.classList.add('bi-lock');td.appendChild(lock)}row.appendChild(td);document.getElementById('table-networks').appendChild(row)}\n"
+"function onClickItemTable(x){x.classList.add('selected');Array.from(x.parentNode.children).forEach(function(s){if(s!==x)s.classList.remove('selected')});var v=x.querySelector('th').firstChild.textContent;if(v){document.getElementById('ssid').value=v;var p=document.getElementById('password');p.value='';p.focus()}}\n"
+"function togglePassword(){var icon=document.getElementById('toggler');var input=document.getElementById('password');if(icon.classList.contains('bi-eye')){icon.classList.replace('bi-eye','bi-eye-slash');input.type='text'}else{icon.classList.replace('bi-eye-slash','bi-eye');input.type='password'}}\n"
+"function connect(){hideAlert();var ssid=document.getElementById('ssid').value;var pswd=document.getElementById('password').value;if(!ssid){displayAlert('Please enter your Wi-Fi name','warning');return}var btn=document.getElementById('btnConnect');btn.disabled=true;btn.textContent='Connecting...';showLoader();fetch('/connect',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({ssid:ssid,pswd:pswd})}).then(function(r){return r.json()}).then(function(r){displayAlert('Saved. Rebooting and connecting to \\''+r.ssid+'\\'...','warning');displayInfo('MAC: '+r.mac);hideLoader()}).catch(function(){hideLoader();btn.disabled=false;btn.textContent='Connect';displayAlert('Failed to save. Please try again.','warning')})}\n"
+"function displayInfo(m){var b=document.getElementById('info-message');b.style.whiteSpace='pre-wrap';b.textContent=m;b.style.display='block'}\n"
+"function displayAlert(m,t){var b=document.getElementById('message');b.style.display='block';b.textContent=m;b.classList.remove('alert-primary','alert-warning');b.classList.add('alert-'+t)}\n"
+"function hideAlert(){document.getElementById('message').style.display='none'}\n"
+"function showLoader(){document.getElementById('loader-wrapper').style.display='block'}\n"
+"function hideLoader(){document.getElementById('loader-wrapper').style.display='none'}\n"
+"setTimeout(getInfo,300);\n"
+"</script>\n"
+"</head>\n"
+"<body>\n"
+"<h1>TRMNL Wi-Fi Setup</h1>\n"
+"<div class=\"div-container\">\n"
+"<table><caption>Available Networks</caption><tbody id=\"table-networks\" class=\"hoverable\"></tbody></table>\n"
+"<p id=\"scanning-info\">Scanning networks, please wait...</p>\n"
+"<div id=\"scanning-loader\" class=\"loader\"></div>\n"
+"</div>\n"
+"<div class=\"div-container\">\n"
+"<div class=\"form-group\">\n"
+"<label for=\"ssid\">SSID</label>\n"
+"<input type=\"text\" id=\"ssid\" name=\"ssid\" placeholder=\"Enter your Wi-Fi name\">\n"
+"</div>\n"
+"<div class=\"form-group\">\n"
+"<label for=\"password\">Password</label>\n"
+"<input type=\"password\" id=\"password\" name=\"password\" placeholder=\"Enter your Wi-Fi password\">\n"
+"<i id=\"toggler\" class=\"bi bi-eye\" onclick=\"togglePassword()\"></i>\n"
+"</div>\n"
+"<div class=\"form-group\">\n"
+"<div class=\"alert alert-primary\" id=\"message\" role=\"alert\" style=\"display:none;\"></div>\n"
+"</div>\n"
+"<span>\n"
+"<button id=\"btnConnect\" class=\"button button-success\" onclick=\"connect()\">Connect</button>\n"
+"<button id=\"btnRefresh\" class=\"button button-primary\" onclick=\"refresh()\">Refresh</button>\n"
+"</span>\n"
+"<div class=\"form-group\" style=\"margin-top:10px;\">\n"
+"<div class=\"alert alert-primary\" id=\"info-message\" role=\"alert\" style=\"display:none;\"></div>\n"
+"</div>\n"
+"</div>\n"
+"<div id=\"loader-wrapper\"><div id=\"loader\"></div></div>\n"
+"</body>\n"
+"</html>\n";

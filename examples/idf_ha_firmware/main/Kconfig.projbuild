@@ -1,0 +1,80 @@
+menu "Home Assistant TFT dashboard firmware"
+
+choice HA_PANEL
+    prompt "Which display panel is physically connected"
+    default HA_PANEL_D320C2403V1_JD9168
+    help
+        The panel abstraction (main/ha_panel.h) is a hard requirement of this
+        firmware so more panels can be added later without touching anything
+        else - main.c, ha_lvgl.c and ha_dashboard.c only ever call the
+        ha_panel_*()/ha_touch_*() interface, never a driver directly. Only one
+        physical panel is supported today.
+
+    config HA_PANEL_D320C2403V1_JD9168
+        bool "D320C2403V1-MIPI, 1024x768, JD9168 driver, GT967 touch"
+        help
+            The panel examples/idf_dsi_camera_preview already proved on this
+            board: 3.2", MIPI-DSI, RGB888, 2 data lanes, plugged into FPC1
+            through an adapter board carrying its own TCA6408 at 0x20.
+endchoice
+
+config HA_DISPLAY_BRIGHTNESS_PERCENT
+    int "Backlight brightness while awake (percent)"
+    default 80
+    range 5 100
+    help
+        Passed to ha_panel_set_backlight() once the dashboard is built. The
+        backlight is the SGM37604A on the display module, driven over I2C -
+        there is no PWM/GPIO brightness control on this board.
+
+config HA_DISPLAY_DIM_PERCENT
+    int "Backlight brightness after the idle timeout (percent)"
+    default 15
+    range 0 100
+    help
+        A wall panel that is always showing something bright, always, is
+        both needless glare and needless backlight wear. Any touch restores
+        HA_DISPLAY_BRIGHTNESS_PERCENT immediately, skipping this dimmed
+        stage entirely - see HA_DISPLAY_OFF_DELAY_S for what happens if the
+        panel stays untouched even longer than this.
+
+config HA_DISPLAY_IDLE_TIMEOUT_S
+    int "Seconds of no touch before dimming"
+    default 120
+    range 10 3600
+
+config HA_DISPLAY_OFF_DELAY_S
+    int "Further seconds of no touch (after dimming) before the backlight turns off"
+    default 60
+    range 5 3600
+    help
+        Measured from when the panel dims (HA_DISPLAY_IDLE_TIMEOUT_S), not
+        from the last touch - so the total time from last touch to backlight
+        off is HA_DISPLAY_IDLE_TIMEOUT_S + this value. Any touch restores
+        full brightness immediately, direct from off - there is no need to
+        "wake" it back through the dimmed stage first.
+
+config HA_WS_DEFAULT_PORT
+    int "Default Home Assistant WebSocket port"
+    default 8123
+    range 1 65535
+    help
+        Pre-fills the stage-2 config page's port field the first time it is
+        shown. The actual value used is always whatever ends up in NVS.
+
+config HA_WS_RECONNECT_MIN_MS
+    int "Minimum reconnect backoff (ms)"
+    default 1000
+    range 200 60000
+
+config HA_WS_RECONNECT_MAX_MS
+    int "Maximum reconnect backoff (ms)"
+    default 30000
+    range 1000 300000
+    help
+        The Home Assistant WebSocket client (main/ha_ws.c) reconnects
+        indefinitely on any disconnect - HA restarts routinely, e.g. after an
+        update - doubling the backoff from the minimum up to this cap, with
+        jitter, rather than spinning or waiting out one fixed interval.
+
+endmenu

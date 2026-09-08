@@ -1,0 +1,6 @@
+version: "0.0.1"
+description: RV-3028-C7 is a SMT Real-Time Clock Module driver
+url: https://github.com/ddB0515/esp-bsp/tree/master/components/rv3028
+
+dependencies:
+  idf: ">=5.5"

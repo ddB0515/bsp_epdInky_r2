@@ -1,0 +1,6 @@
+version: "0.0.1"
+description: STC3115 Gas gauge IC with alarm output for handheld applications driver
+url: https://github.com/ddB0515/esp-bsp/tree/master/components/stc3115
+
+dependencies:
+  idf: ">=5.5"

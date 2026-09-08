@@ -1,0 +1,346 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>epdInky ESP32-P4 Camera</title>
+<style>
+  :root { color-scheme: dark; }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0; padding: 1rem;
+    background: #14161a; color: #e8eaed;
+    font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  }
+  h1 { margin: 0 0 .25rem; font-size: 1.15rem; font-weight: 600; }
+  .sub { color: #9aa0a6; font-size: .8rem; margin-bottom: 1rem; }
+  .wrap { display: flex; flex-wrap: wrap; gap: 1.25rem; align-items: flex-start; }
+  .left { flex: 1 1 640px; min-width: 320px; }
+  .right {
+    flex: 0 1 320px; min-width: 280px;
+    background: #1e2126; border: 1px solid #3c4043;
+    border-radius: 8px; padding: 1rem;
+  }
+  button {
+    padding: .6rem 1.4rem; font-size: .95rem; font-weight: 600;
+    color: #14161a; background: #8ab4f8;
+    border: 0; border-radius: 6px; cursor: pointer;
+  }
+  button:hover { background: #a8c7fa; }
+  button.stop { background: #f28b82; }
+  button.ghost {
+    background: transparent; color: #9aa0a6;
+    border: 1px solid #3c4043; font-weight: 500;
+  }
+  button.ghost:hover { background: #2a2d31; color: #e8eaed; }
+  #viewport {
+    display: none; margin-top: .75rem;
+    border: 1px solid #3c4043; border-radius: 8px;
+    overflow: hidden; background: #000; line-height: 0;
+  }
+  #viewport.on { display: block; }
+  img { display: block; width: 100%; height: auto; }
+  .ctrl { margin-bottom: .9rem; }
+  .ctrl label {
+    display: flex; justify-content: space-between;
+    font-size: .8rem; color: #bdc1c6; margin-bottom: .3rem;
+  }
+  .ctrl label b { color: #8ab4f8; font-weight: 600; font-variant-numeric: tabular-nums; }
+  input[type=range] { width: 100%; accent-color: #8ab4f8; }
+  input[type=range]:disabled { opacity: .35; }
+  .row { display: flex; align-items: center; justify-content: space-between; gap: .5rem; }
+  .switch { display: flex; align-items: center; gap: .5rem; font-size: .85rem; }
+  input[type=checkbox] { width: 1.05rem; height: 1.05rem; accent-color: #8ab4f8; }
+  hr { border: 0; border-top: 1px solid #3c4043; margin: 1rem 0; }
+  .meter { font-size: .75rem; color: #9aa0a6; margin-top: .5rem; }
+  .hint { font-size: .72rem; color: #7c8288; margin-top: .35rem; line-height: 1.4; }
+  /* An author `display` rule beats the UA stylesheet's rule for [hidden], so
+     without this the hidden attribute has no effect on flex containers. */
+  [hidden] { display: none !important; }
+  .reslabel { display: flex; align-items: center; gap: .4rem; font-size: .8rem;
+              color: #9aa0a6; }
+  select { background: #2a2d2f; color: #e8eaed; border: 1px solid #3c4043;
+           border-radius: 4px; padding: .35rem .4rem; font-size: .85rem; }
+  #photobar { margin-top: .6rem; display: flex; flex-direction: column; gap: .4rem; }
+  #snapStatus { margin: 0; min-height: 1rem; }
+  .rtsp { margin-top: .75rem; padding: .6rem .7rem; border: 1px solid #3c4043;
+          border-radius: 6px; display: flex; flex-direction: column; gap: .35rem; }
+  .rtsp strong { font-size: .8rem; }
+  .rtsp code { font-size: .8rem; color: #8ab4f8; word-break: break-all;
+               user-select: all; }
+  .rtsp span { font-size: .72rem; color: #7c8288; line-height: 1.4; }
+</style>
+</head>
+<body>
+  <h1>epdInky ESP32-P4 &middot; SC2336</h1>
+  <div class="sub" id="status">Stream is stopped</div>
+
+  <div class="wrap">
+    <div class="left">
+      <div class="row" style="margin-bottom:.6rem">
+        <button id="toggle">Open stream</button>
+        <label class="reslabel">Resolution
+          <select id="res"></select>
+        </label>
+      </div>
+      <div id="viewport"><img id="view" alt="Camera stream"></div>
+      <!-- Hidden until the stream is open: a still is the frame you are
+           looking at, so these only make sense once there is a picture. -->
+      <div id="photobar" hidden>
+        <div class="row">
+          <button class="ghost" id="snap">Save to SD card</button>
+          <button class="ghost" id="download">Download to device</button>
+        </div>
+        <div class="hint" id="snapStatus"></div>
+      </div>
+      <div class="rtsp">
+        <strong id="rtspTitle">RTSP (H.264)</strong>
+        <code id="rtspUrl">rtsp://&hellip;:8554/stream</code>
+        <span>Plays in VLC or ffplay. Opening it stops this preview &mdash;
+              the camera can only feed one stream at a time.</span>
+      </div>
+    </div>
+
+    <div class="right">
+      <div class="row">
+        <strong style="font-size:.9rem">Camera controls</strong>
+        <button class="ghost" id="reset">Reset</button>
+      </div>
+      <hr>
+      <div id="controls"></div>
+      <div class="meter" id="meter"></div>
+    </div>
+  </div>
+
+<script>
+const $ = (id) => document.getElementById(id);
+const view = $('view'), viewport = $('viewport'), status = $('status');
+let streaming = false, controls = [];
+
+// The stream is served from a second port so it cannot block the control API.
+const streamUrl = () => `http://${location.hostname}:81/stream?t=${Date.now()}`;
+
+// Fill in the RTSP URL from wherever this page was loaded.
+$('rtspUrl').textContent = `rtsp://${location.hostname}:8554/stream`;
+
+$('toggle').addEventListener('click', () => {
+  streaming = !streaming;
+  const b = $('toggle');
+  if (streaming) {
+    view.src = streamUrl();
+    viewport.classList.add('on');
+    b.textContent = 'Close stream';
+    b.classList.add('stop');
+    status.textContent = 'Streaming';
+    $('photobar').hidden = false;
+  } else {
+    view.src = '';                       // closes the connection server-side
+    viewport.classList.remove('on');
+    b.textContent = 'Open stream';
+    b.classList.remove('stop');
+    status.textContent = 'Stream is stopped';
+    $('photobar').hidden = true;
+    $('snapStatus').textContent = '';
+  }
+});
+
+view.addEventListener('error', () => {
+  if (streaming) status.textContent = 'Stream error - is the camera connected?';
+});
+
+async function send(id, value) {
+  try {
+    const r = await fetch(`/api/control?id=${id}&value=${value}`);
+    if (r.status === 409) {           // manual exposure needs auto turned off
+      status.textContent = 'Turn auto exposure off to set this by hand';
+      return null;
+    }
+    return await r.json();
+  } catch (e) { return null; }
+}
+
+function render() {
+  const box = $('controls');
+  box.innerHTML = '';
+
+  for (const c of controls) {
+    const div = document.createElement('div');
+    div.className = 'ctrl';
+
+    if (c.bool) {
+      div.innerHTML =
+        `<div class="switch"><input type="checkbox" id="c${c.id}"${c.value ? ' checked' : ''}>
+         <label for="c${c.id}" style="margin:0">${c.label}</label></div>`;
+      box.appendChild(div);
+      $(`c${c.id}`).addEventListener('change', async (e) => {
+        await send(c.id, e.target.checked ? 1 : 0);
+        c.value = e.target.checked ? 1 : 0;
+        if (c.key === 'auto_exposure') refresh();   // re-enables manual sliders
+      });
+    } else {
+      div.innerHTML =
+        `<label for="c${c.id}">${c.label} <b id="v${c.id}">${c.value}</b></label>
+         <input type="range" id="c${c.id}" min="${c.min}" max="${c.max}"
+                step="${c.step}" value="${c.value}">`;
+      box.appendChild(div);
+
+      const input = $(`c${c.id}`);
+      input.addEventListener('input', (e) => { $(`v${c.id}`).textContent = e.target.value; });
+      // Only send on release, so dragging does not flood the device.
+      input.addEventListener('change', async (e) => {
+        const res = await send(c.id, e.target.value);
+        if (res) { c.value = res.value; e.target.value = res.value; $(`v${c.id}`).textContent = res.value; }
+      });
+    }
+  }
+
+  // Exposure and gain are owned by the AE loop while it is running.
+  const ae = controls.find(c => c.key === 'auto_exposure');
+  if (ae && ae.value) {
+    for (const key of ['exposure', 'gain', 'again']) {
+      const c = controls.find(x => x.key === key);
+      if (c && $(`c${c.id}`)) $(`c${c.id}`).disabled = true;
+    }
+    const hint = document.createElement('div');
+    hint.className = 'hint';
+    hint.textContent = 'Exposure and gain are managed automatically. Turn auto exposure off to set them by hand.';
+    box.appendChild(hint);
+  }
+}
+
+async function refresh() {
+  try {
+    const r = await fetch('/api/controls');
+    const d = await r.json();
+    controls = d.controls;
+    render();
+    $('meter').textContent = `Sensor ${d.width}x${d.height} · measured brightness ${d.luma}`;
+    // The RTSP stream is always the sensor's native size, so label it from here
+    // rather than hardcoding a resolution that could drift out of date.
+    $('rtspTitle').textContent = `RTSP (H.264, ${d.width}\u00d7${d.height})`;
+    // No card, no point offering to save to it.
+    $('snap').hidden = !d.sd;
+    fillResolutions(d.modes, d.width, d.height);
+  } catch (e) { /* device busy, try again on the next tick */ }
+}
+
+// The mode list comes from the sensor itself, so the page can never offer a
+// resolution the hardware does not have.
+let resFilled = false;
+function fillResolutions(modes, curW, curH) {
+  if (resFilled || !modes || !modes.length) return;
+  const sel = $('res');
+  sel.innerHTML = '';
+  for (const m of modes) {
+    const o = document.createElement('option');
+    o.value = `${m.w}x${m.h}`;
+    o.textContent = `${m.w}\u00d7${m.h} @ ${m.fps}fps`;
+    sel.appendChild(o);
+  }
+  sel.value = `${curW}x${curH}`;
+  resFilled = true;
+}
+
+$('res').addEventListener('change', async () => {
+  const [w, h] = $('res').value.split('x');
+  const wasStreaming = streaming;
+
+  // Switching mode tears the capture down, so it cannot happen underneath a
+  // running stream: close it, switch, then reopen.
+  if (wasStreaming) $('toggle').click();
+
+  status.textContent = `Switching to ${w}\u00d7${h}\u2026`;
+  try {
+    const r = await fetch(`/api/resolution?w=${w}&h=${h}`);
+    if (!r.ok) {
+      const d = await r.json().catch(() => ({ error: r.statusText }));
+      status.textContent = `Resolution failed: ${d.error}`;
+      return;
+    }
+  } catch (e) {
+    status.textContent = 'Resolution failed: no response';
+    return;
+  }
+
+  if (wasStreaming) $('toggle').click();
+  else status.textContent = 'Stream is stopped';
+  refresh();
+});
+
+// Both still actions share the same wait/report shape.
+async function withStill(work) {
+  const st = $('snapStatus');
+  $('snap').disabled = true;
+  $('download').disabled = true;
+  st.textContent = 'Capturing\u2026';
+  try {
+    st.textContent = await work();
+  } catch (e) {
+    st.textContent = 'Failed: no response from the board';
+  }
+  $('snap').disabled = false;
+  $('download').disabled = false;
+}
+
+$('snap').addEventListener('click', () => withStill(async () => {
+  const r = await fetch('/api/snapshot');
+  const d = await r.json();
+  // The board reports the exact path it wrote, so show that rather than
+  // guessing the filename here.
+  return r.ok ? `Saved ${d.file} (${(d.bytes / 1024).toFixed(0)} KB)`
+              : `Failed: ${d.error}`;
+}));
+
+$('download').addEventListener('click', () => withStill(async () => {
+  const r = await fetch('/api/photo');
+  if (!r.ok) {
+    const d = await r.json().catch(() => ({ error: r.statusText }));
+    return `Failed: ${d.error}`;
+  }
+
+  // Name the file here rather than on the board: the browser knows the real
+  // date and time, and the board's RTC may never have been set.
+  const t = new Date();
+  const p = (n) => String(n).padStart(2, '0');
+  const name = `epdinky-${t.getFullYear()}${p(t.getMonth() + 1)}${p(t.getDate())}`
+             + `-${p(t.getHours())}${p(t.getMinutes())}${p(t.getSeconds())}.jpg`;
+
+  const blob = await r.blob();
+  const url = URL.createObjectURL(blob);
+  const a = Object.assign(document.createElement('a'), { href: url, download: name });
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+  URL.revokeObjectURL(url);
+
+  return `Downloaded ${name} (${(blob.size / 1024).toFixed(0)} KB)`;
+}));
+
+$('reset').addEventListener('click', async () => { await fetch('/api/reset'); refresh(); });
+
+refresh();
+// Keep the brightness readout live without fighting the user's slider drags.
+// Only while streaming: a forgotten tab must not hold the board awake, and
+// there is nothing to watch once the stream is closed.
+setInterval(async () => {
+  if (!streaming) return;
+  try {
+    const d = await (await fetch('/api/controls')).json();
+    $('meter').textContent = `Sensor ${d.width}x${d.height} · measured brightness ${d.luma}`;
+    const ae = controls.find(c => c.key === 'auto_exposure');
+    if (ae && ae.value) {
+      for (const key of ['exposure', 'gain']) {
+        const local = controls.find(x => x.key === key);
+        const live  = d.controls.find(x => x.key === key);
+        if (local && live && $(`c${local.id}`)) {
+          local.value = live.value;
+          $(`c${local.id}`).value = live.value;
+          $(`v${local.id}`).textContent = live.value;
+        }
+      }
+    }
+  } catch (e) { /* ignore */ }
+}, 2000);
+</script>
+</body>
+</html>

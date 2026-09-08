@@ -1,0 +1,176 @@
+# =============================================================================
+# epdInky ESP32-P4/C6 rev.2 (TFT+touch variant) - board configuration
+#
+# THIS FILE IS THE SOURCE OF TRUTH FOR BOARD SETTINGS.
+#
+# `sdkconfig` is a generated file: `idf.py fullclean` deletes it and menuconfig
+# can overwrite it, so anything the board needs to boot correctly must live
+# here (or in sdkconfig.defaults.esp32p4) and never only in sdkconfig.
+#
+# After editing either file run `idf.py reconfigure`, or delete sdkconfig and
+# rebuild, for the changes to take effect.
+#
+# Values marked [HW] are dictated by the schematic and must not be changed
+# without a board revision. This file is adapted from
+# examples/idf_dsi_camera_preview/sdkconfig.defaults, which already proved the
+# Wi-Fi/BLE-over-esp-hosted and MIPI-DSI-panel settings on this exact board -
+# the camera/ISP-only sections are dropped since this firmware has no camera.
+# =============================================================================
+
+CONFIG_IDF_TARGET="esp32p4"
+CONFIG_IDF_EXPERIMENTAL_FEATURES=y
+
+# -----------------------------------------------------------------------------
+# Console
+#
+# [HW] The ESP32-P4 default UART0 console pins are GPIO37/GPIO38 - exactly the
+# TPS65185 WAKEUP and INT lines on this board. Even with the e-paper PMIC
+# disabled in this firmware, those pins are still wired to it, so the same
+# rule applies: use USB Serial/JTAG instead and leave UART0 unused.
+# -----------------------------------------------------------------------------
+CONFIG_ESP_CONSOLE_USB_SERIAL_JTAG=y
+
+# -----------------------------------------------------------------------------
+# SPI flash - [HW] U6 is a Winbond W25Q128JVS (128 Mbit = 16 MB)
+# -----------------------------------------------------------------------------
+CONFIG_ESPTOOLPY_FLASHSIZE_16MB=y
+CONFIG_ESPTOOLPY_FLASHSIZE="16MB"
+CONFIG_ESPTOOLPY_FLASHMODE_DIO=y
+CONFIG_ESPTOOLPY_FLASHFREQ_80M=y
+
+# -----------------------------------------------------------------------------
+# Filesystem / storage
+# -----------------------------------------------------------------------------
+CONFIG_FATFS_VFS_FSTAT_BLKSIZE=4096
+
+# -----------------------------------------------------------------------------
+# Wi-Fi / Bluetooth via the on-board ESP32-C6 (esp-hosted over SDIO)
+#
+# [HW] All pin numbers below come from the schematic netlist:
+#   SDIO slot 1: CLK=GPIO18 CMD=GPIO19 D0=GPIO23 D1=GPIO22 D2=GPIO21 D3=GPIO20
+#   C6 EN      : GPIO54
+# -----------------------------------------------------------------------------
+CONFIG_ESP_HOSTED_ENABLED=y
+CONFIG_ESP_HOSTED_P4_DEV_BOARD_NONE=y
+CONFIG_ESP_HOSTED_PRIV_SDIO_OPTION=y
+CONFIG_ESP_HOSTED_PRIV_SPI_HD_OPTION=y
+CONFIG_ESP_HOSTED_SDIO_HOST_INTERFACE=y
+CONFIG_ESP_HOSTED_IDF_SLAVE_TARGET="esp32c6"
+CONFIG_ESP_HOSTED_SDIO_RESET_ACTIVE_HIGH=y
+CONFIG_ESP_HOSTED_SDIO_OPTIMIZATION_RX_STREAMING_MODE=y
+CONFIG_ESP_HOSTED_SDIO_SLOT_1=y
+CONFIG_ESP_HOSTED_SDIO_SLOT=1
+CONFIG_ESP_HOSTED_SDIO_4_BIT_BUS=y
+CONFIG_ESP_HOSTED_SDIO_BUS_WIDTH=4
+CONFIG_ESP_HOSTED_SDIO_CLOCK_FREQ_KHZ=40000
+
+CONFIG_ESP_HOSTED_SDIO_CMD_GPIO_RANGE_MIN=0
+CONFIG_ESP_HOSTED_SDIO_CMD_GPIO_RANGE_MAX=100
+CONFIG_ESP_HOSTED_SDIO_CLK_GPIO_RANGE_MIN=0
+CONFIG_ESP_HOSTED_SDIO_CLK_GPIO_RANGE_MAX=100
+CONFIG_ESP_HOSTED_SDIO_D0_GPIO_RANGE_MIN=0
+CONFIG_ESP_HOSTED_SDIO_D0_GPIO_RANGE_MAX=100
+CONFIG_ESP_HOSTED_SDIO_D1_GPIO_RANGE_MIN=0
+CONFIG_ESP_HOSTED_SDIO_D1_GPIO_RANGE_MAX=100
+CONFIG_ESP_HOSTED_SDIO_D2_GPIO_RANGE_MIN=0
+CONFIG_ESP_HOSTED_SDIO_D2_GPIO_RANGE_MAX=100
+CONFIG_ESP_HOSTED_SDIO_D3_GPIO_RANGE_MIN=0
+CONFIG_ESP_HOSTED_SDIO_D3_GPIO_RANGE_MAX=100
+CONFIG_ESP_HOSTED_SDIO_RESET_SLAVE_GPIO_MIN=0
+CONFIG_ESP_HOSTED_SDIO_RESET_SLAVE_GPIO_MAX=100
+
+CONFIG_ESP_HOSTED_PRIV_SDIO_PIN_CLK_SLOT_1=18
+CONFIG_ESP_HOSTED_PRIV_SDIO_PIN_CMD_SLOT_1=19
+CONFIG_ESP_HOSTED_PRIV_SDIO_PIN_D0_SLOT_1=23
+CONFIG_ESP_HOSTED_PRIV_SDIO_PIN_D1_4BIT_BUS_SLOT_1=22
+CONFIG_ESP_HOSTED_PRIV_SDIO_PIN_D2_4BIT_BUS_SLOT_1=21
+CONFIG_ESP_HOSTED_PRIV_SDIO_PIN_D3_4BIT_BUS_SLOT_1=20
+
+CONFIG_ESP_HOSTED_SDIO_GPIO_RESET_SLAVE=54
+CONFIG_ESP_HOSTED_SDIO_PIN_CLK=18
+CONFIG_ESP_HOSTED_SDIO_PIN_CMD=19
+CONFIG_ESP_HOSTED_SDIO_PIN_D0=23
+CONFIG_ESP_HOSTED_SDIO_PIN_D1=22
+CONFIG_ESP_HOSTED_SDIO_PRIV_PIN_D1_4BIT_BUS=22
+CONFIG_ESP_HOSTED_SDIO_PIN_D2=21
+CONFIG_ESP_HOSTED_SDIO_PIN_D3=20
+
+CONFIG_ESP_HOSTED_SDIO_TX_Q_SIZE=20
+CONFIG_ESP_HOSTED_SDIO_RX_Q_SIZE=20
+CONFIG_ESP_HOSTED_SDIO_RESET_DELAY_MS=1500
+
+# -----------------------------------------------------------------------------
+# Partition table
+# -----------------------------------------------------------------------------
+CONFIG_PARTITION_TABLE_CUSTOM=y
+CONFIG_PARTITION_TABLE_CUSTOM_FILENAME="partitions.csv"
+
+# -----------------------------------------------------------------------------
+# Bluetooth LE
+#
+# [HW] The ESP32-P4 has no radio: the BLE controller lives on the ESP32-C6 and
+# is reached over the same esp-hosted SDIO link as Wi-Fi. Not used by this
+# firmware today, but left enabled to match the rest of this repo's examples
+# and because bsp_ble_init() lives in the shared BSP component.
+# -----------------------------------------------------------------------------
+CONFIG_BT_ENABLED=y
+CONFIG_BT_NIMBLE_ENABLED=y
+CONFIG_BT_CONTROLLER_DISABLED=y
+CONFIG_BT_NIMBLE_TRANSPORT_UART=n
+CONFIG_ESP_HOSTED_ENABLE_BT_NIMBLE=y
+CONFIG_ESP_HOSTED_NIMBLE_HCI_VHCI=y
+
+# NimBLE needs a 1 ms tick; this also gives the LVGL/WebSocket tasks finer
+# vTaskDelay() granularity than the IDF default 100 Hz.
+CONFIG_FREERTOS_HZ=1000
+
+CONFIG_BT_NIMBLE_ROLE_CENTRAL=y
+CONFIG_BT_NIMBLE_ROLE_OBSERVER=y
+
+# -----------------------------------------------------------------------------
+# Networking extras
+#
+# The provisioning portal (Stage 1 SoftAP + Stage 2 plain server) needs
+# sockets on top of whatever the WebSocket client to Home Assistant holds
+# open continuously.
+# -----------------------------------------------------------------------------
+CONFIG_LWIP_MAX_SOCKETS=16
+
+# -----------------------------------------------------------------------------
+# MIPI-DSI display (D320C2403V1-MIPI, 1024x768, JD9168 + GT967 touch)
+#
+# [HW] 2 data lanes on FPC1, through an adapter board carrying its own
+# TCA6408 at 0x20 (see components/epdinky_p4_board/include/bsp/config.h and
+# main/ha_panel_jd9168.c). There is no panel reset GPIO and no PWM backlight -
+# both go through I2C (the adapter's expander, and the SGM37604A respectively).
+# -----------------------------------------------------------------------------
+CONFIG_ESP_LCD_ENABLE_DEBUG_LOG=n
+
+# The DPI frame buffer, LVGL's draw buffers and the entity-state/JSON working
+# memory for the Home Assistant WebSocket client all live in PSRAM.
+CONFIG_SPIRAM_TRY_ALLOCATE_WIFI_LWIP=y
+
+# -----------------------------------------------------------------------------
+# LVGL
+#
+# CONFIG_LV_CONF_SKIP defaults to y in this managed component - when set, the
+# ESP-IDF LVGL wrapper generates its configuration from these CONFIG_LV_*
+# options and a project main/lv_conf.h is silently ignored (confirmed against
+# a real build: a project lv_conf.h here compiled and linked, but every one
+# of its #defines had no effect). So unlike examples/idf_dsi_camera_preview's
+# main/lv_conf.h (harmless but dead under the same default), this firmware's
+# LVGL configuration lives entirely here, matching
+# examples/idf_epd_lvgl/sdkconfig.defaults's approach.
+#
+# Color depth 16 is already this component's own default and matches what
+# examples/idf_dsi_camera_preview validated on this exact panel - the DPI
+# frame buffer is still told RGB888 at runtime via
+# lv_display_set_color_format(), LV_COLOR_DEPTH only affects LVGL's internal
+# defaults elsewhere (see ha_lvgl.c).
+CONFIG_LV_CONF_SKIP=y
+CONFIG_LV_FONT_MONTSERRAT_24=y
+CONFIG_LV_FONT_MONTSERRAT_32=y
+CONFIG_LV_FONT_DEFAULT_MONTSERRAT_24=y
+# The Stage 1 Wi-Fi setup screen's QR code (ha_setup_screen.c) uses LVGL's
+# own qrcode widget instead of vendoring a QR encoder.
+CONFIG_LV_USE_QRCODE=y

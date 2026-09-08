@@ -1,0 +1,13 @@
+build/*
+managed_components/*
+sdkconfig.old
+dependencies.lock
+# Local Wi-Fi credentials for the demo (never commit real credentials)
+main/wifi_credentials.h
+
+# Arduino example build artefacts and local credentials
+examples/*/build/
+examples/*/managed_components/
+examples/*/sdkconfig
+examples/*/dependencies.lock
+examples/*/main/wifi_credentials.h

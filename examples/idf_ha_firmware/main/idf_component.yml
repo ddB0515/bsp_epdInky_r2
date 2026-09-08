@@ -1,0 +1,34 @@
+dependencies:
+  idf: ">=6.0"
+
+  # LVGL for the dashboard UI. Driven directly rather than through
+  # espressif/esp_lvgl_port, for the same reason examples/idf_dsi_camera_preview
+  # already made this call on this exact panel: esp_lvgl_port does not
+  # currently build cleanly against this IDF release, and driving LVGL by hand
+  # is a few dozen lines while giving exact control over the flush/tick/task
+  # wiring. Pinned to 9.5.x specifically, per instruction.
+  lvgl/lvgl: "^9.5.0"
+
+  # GT967 touch. It's a Goodix GT9xx part that speaks the same register
+  # protocol as the GT911, so the stock driver handles it - same choice
+  # examples/idf_dsi_camera_preview already made on this exact panel.
+  espressif/esp_lcd_touch_gt911: "^1.2.0"
+
+  # JSON for the Home Assistant WebSocket protocol (auth/subscribe/call_service
+  # messages, get_states responses) and the provisioning portal's /connect and
+  # /scan bodies. Same choice examples/idf_epd_ha_firmware makes, for the same
+  # reason: no Arduino code anywhere in this tree.
+  espressif/cjson: "^1.7.18"
+
+  # The Home Assistant WebSocket client transport. Talks to HA's native
+  # ws://<host>:8123/api/websocket API directly (auth, subscribe_events,
+  # call_service) rather than through MQTT, so arbitrary entities work without
+  # any extra Home-Assistant-side configuration.
+  espressif/esp_websocket_client: "^1.0.0"
+
+# What this example does NOT need from the registry, and why:
+#
+#   espressif/mqtt -> not needed: this firmware talks to Home Assistant
+#     directly over its WebSocket API, not MQTT discovery like
+#     examples/idf_epd_ha_firmware does.
+#   espressif/esp_lvgl_port -> not needed, see the comment above.

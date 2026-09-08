@@ -1,0 +1,29 @@
+dependencies:
+  idf: ">=5.5"
+
+  # Official Espressif camera/video framework: provides the V4L2 interface,
+  # the MIPI-CSI video device and the ISP pipeline.
+  espressif/esp_video:
+    version: "^2.4.0"
+    rules:
+      - if: "target in [esp32p4]"
+
+  # Sensor drivers, including the SC2336 fitted to this board.
+  espressif/esp_cam_sensor:
+    version: "^2.4.0"
+    rules:
+      - if: "target in [esp32p4]"
+
+  # LVGL for the on-screen interface.
+  #
+  # Driven directly rather than through espressif/esp_lvgl_port: as of port
+  # 2.9.0 that component still sets cbs.on_frame_buf_complete for IDF >= 5.5,
+  # but IDF 6.0 renamed the member back to on_refresh_done, so it does not
+  # compile here. Driving LVGL directly also keeps its drawing confined to the
+  # bars, which is what stops it fighting the PPA over the frame buffer.
+  lvgl/lvgl:
+    version: "^9.3.0"
+  # GT967 touch. It is a Goodix GT9xx part and speaks the same protocol as the
+  # GT911, so the stock driver handles it.
+  espressif/esp_lcd_touch_gt911:
+    version: "^1.2.0"

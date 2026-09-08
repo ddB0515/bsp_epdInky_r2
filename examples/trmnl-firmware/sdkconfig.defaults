@@ -1,0 +1,186 @@
+# =============================================================================
+# epdInky ESP32-P4/C6 rev.2 - TRMNL firmware configuration
+#
+# THIS FILE IS THE SOURCE OF TRUTH FOR BOARD SETTINGS.
+#
+# `sdkconfig` is a generated file: `idf.py fullclean` deletes it and menuconfig
+# can overwrite it, so anything the board needs to boot correctly must live here
+# and never only in sdkconfig.
+#
+# After editing, run `idf.py reconfigure`, or delete sdkconfig and rebuild.
+# Note that changing a default has NO effect on an existing sdkconfig - the
+# generated file wins - so delete it when a value here does not take.
+#
+# Chip-specific settings (PSRAM, CPU clock, silicon revision gating, the
+# esp_wifi_remote and lwIP buffer tuning) live in sdkconfig.defaults.esp32p4,
+# which ESP-IDF applies on top of this file for that target. That is the repo
+# convention; the other examples split the same way.
+#
+# Values marked [HW] are dictated by the schematic and must not be changed
+# without a board revision.
+# =============================================================================
+
+CONFIG_IDF_TARGET="esp32p4"
+CONFIG_IDF_EXPERIMENTAL_FEATURES=y
+
+# -----------------------------------------------------------------------------
+# Console
+#
+# [HW] The ESP32-P4 default UART0 console pins are GPIO37/GPIO38 - exactly the
+# TPS65185 WAKEUP and INT lines on this board. With the UART console enabled,
+# every log line toggles the PMIC wake input. Use USB Serial/JTAG instead and
+# leave UART0 unused.
+# -----------------------------------------------------------------------------
+CONFIG_ESP_CONSOLE_USB_SERIAL_JTAG=y
+
+# -----------------------------------------------------------------------------
+# SPI flash - [HW] U6 is a Winbond W25Q128JVS (128 Mbit = 16 MB)
+# -----------------------------------------------------------------------------
+CONFIG_ESPTOOLPY_FLASHSIZE_16MB=y
+CONFIG_ESPTOOLPY_FLASHSIZE="16MB"
+CONFIG_ESPTOOLPY_FLASHMODE_DIO=y
+CONFIG_ESPTOOLPY_FLASHFREQ_80M=y
+
+# -----------------------------------------------------------------------------
+# Wi-Fi / Bluetooth via the on-board ESP32-C6 (esp-hosted over SDIO)
+#
+# [HW] All pin numbers below come from the schematic netlist:
+#   SDIO slot 1: CLK=GPIO18 CMD=GPIO19 D0=GPIO23 D1=GPIO22 D2=GPIO21 D3=GPIO20
+#   C6 EN      : GPIO54
+#
+# The C6 EN line has a 10K pull-up (R43), so the radio is enabled by default.
+# RESET_ACTIVE_HIGH=y is correct for an EN pin: esp-hosted pulses
+# HIGH -> LOW -> HIGH and leaves it HIGH. Do not drive GPIO54 low from
+# application code or the radio stays in reset.
+# -----------------------------------------------------------------------------
+CONFIG_ESP_HOSTED_ENABLED=y
+CONFIG_ESP_HOSTED_P4_DEV_BOARD_NONE=y
+CONFIG_ESP_HOSTED_PRIV_SDIO_OPTION=y
+CONFIG_ESP_HOSTED_PRIV_SPI_HD_OPTION=y
+CONFIG_ESP_HOSTED_SDIO_HOST_INTERFACE=y
+CONFIG_ESP_HOSTED_IDF_SLAVE_TARGET="esp32c6"
+CONFIG_ESP_HOSTED_SDIO_RESET_ACTIVE_HIGH=y
+CONFIG_ESP_HOSTED_SDIO_OPTIMIZATION_RX_STREAMING_MODE=y
+CONFIG_ESP_HOSTED_SDIO_SLOT_1=y
+CONFIG_ESP_HOSTED_SDIO_SLOT=1
+CONFIG_ESP_HOSTED_SDIO_4_BIT_BUS=y
+CONFIG_ESP_HOSTED_SDIO_BUS_WIDTH=4
+CONFIG_ESP_HOSTED_SDIO_CLOCK_FREQ_KHZ=40000
+
+# Allow the full GPIO range so the pin choices below are accepted
+CONFIG_ESP_HOSTED_SDIO_CMD_GPIO_RANGE_MIN=0
+CONFIG_ESP_HOSTED_SDIO_CMD_GPIO_RANGE_MAX=100
+CONFIG_ESP_HOSTED_SDIO_CLK_GPIO_RANGE_MIN=0
+CONFIG_ESP_HOSTED_SDIO_CLK_GPIO_RANGE_MAX=100
+CONFIG_ESP_HOSTED_SDIO_D0_GPIO_RANGE_MIN=0
+CONFIG_ESP_HOSTED_SDIO_D0_GPIO_RANGE_MAX=100
+CONFIG_ESP_HOSTED_SDIO_D1_GPIO_RANGE_MIN=0
+CONFIG_ESP_HOSTED_SDIO_D1_GPIO_RANGE_MAX=100
+CONFIG_ESP_HOSTED_SDIO_D2_GPIO_RANGE_MIN=0
+CONFIG_ESP_HOSTED_SDIO_D2_GPIO_RANGE_MAX=100
+CONFIG_ESP_HOSTED_SDIO_D3_GPIO_RANGE_MIN=0
+CONFIG_ESP_HOSTED_SDIO_D3_GPIO_RANGE_MAX=100
+CONFIG_ESP_HOSTED_SDIO_RESET_SLAVE_GPIO_MIN=0
+CONFIG_ESP_HOSTED_SDIO_RESET_SLAVE_GPIO_MAX=100
+
+# [HW] Slot-1 pin assignment (private symbols the visible ones derive from)
+CONFIG_ESP_HOSTED_PRIV_SDIO_PIN_CLK_SLOT_1=18
+CONFIG_ESP_HOSTED_PRIV_SDIO_PIN_CMD_SLOT_1=19
+CONFIG_ESP_HOSTED_PRIV_SDIO_PIN_D0_SLOT_1=23
+CONFIG_ESP_HOSTED_PRIV_SDIO_PIN_D1_4BIT_BUS_SLOT_1=22
+CONFIG_ESP_HOSTED_PRIV_SDIO_PIN_D2_4BIT_BUS_SLOT_1=21
+CONFIG_ESP_HOSTED_PRIV_SDIO_PIN_D3_4BIT_BUS_SLOT_1=20
+
+# [HW] Effective pin assignment
+CONFIG_ESP_HOSTED_SDIO_GPIO_RESET_SLAVE=54
+CONFIG_ESP_HOSTED_SDIO_PIN_CLK=18
+CONFIG_ESP_HOSTED_SDIO_PIN_CMD=19
+CONFIG_ESP_HOSTED_SDIO_PIN_D0=23
+CONFIG_ESP_HOSTED_SDIO_PIN_D1=22
+CONFIG_ESP_HOSTED_SDIO_PRIV_PIN_D1_4BIT_BUS=22
+CONFIG_ESP_HOSTED_SDIO_PIN_D2=21
+CONFIG_ESP_HOSTED_SDIO_PIN_D3=20
+
+CONFIG_ESP_HOSTED_SDIO_TX_Q_SIZE=20
+CONFIG_ESP_HOSTED_SDIO_RX_Q_SIZE=20
+CONFIG_ESP_HOSTED_SDIO_RESET_DELAY_MS=1500
+
+# Bluetooth is not used by this firmware. Leaving the NimBLE host out saves
+# roughly 100 KB of flash and a task; the esp-hosted Wi-Fi path is unaffected.
+CONFIG_BT_ENABLED=n
+
+# -----------------------------------------------------------------------------
+# Partition table - see partitions.csv
+# -----------------------------------------------------------------------------
+CONFIG_PARTITION_TABLE_CUSTOM=y
+CONFIG_PARTITION_TABLE_CUSTOM_FILENAME="partitions.csv"
+
+# -----------------------------------------------------------------------------
+# TLS
+#
+# Upstream TRMNL calls WiFiClientSecure::setInsecure() - it does no certificate
+# validation at all. This reproduces that behaviour, by explicit decision, so
+# that the port matches upstream's observable network behaviour for v1.
+#
+# Without both symbols esp-tls refuses to hand back a session when no CA is
+# configured: esp_tls_mbedtls.c returns ESP_ERR_MBEDTLS_SSL_SETUP_FAILED. With
+# them it calls mbedtls_ssl_conf_authmode(MBEDTLS_SSL_VERIFY_NONE).
+#
+# Note that "insecure" here means only that the certificate is not checked. SNI
+# must still be sent - trmnl.app is on a shared frontend and drops a handshake
+# that carries no server name. See the comment on skip_cert_common_name_check
+# in trmnl_http.c, which is the flag that would break it.
+#
+# TO TIGHTEN THIS LATER: drop both lines, add
+#   CONFIG_MBEDTLS_CERTIFICATE_BUNDLE=y
+#   CONFIG_MBEDTLS_CERTIFICATE_BUNDLE_DEFAULT_FULL=y
+# and set .crt_bundle_attach = esp_crt_bundle_attach in trmnl_http.c. Costs
+# about 64 KB of flash and actually authenticates trmnl.app.
+# -----------------------------------------------------------------------------
+CONFIG_ESP_TLS_INSECURE=y
+CONFIG_ESP_TLS_SKIP_SERVER_CERT_VERIFY=y
+
+# The default 16 KB TLS input buffer is enough for a handshake but the server
+# hands back sizeable responses; give mbedTLS room so reads are not chopped up.
+CONFIG_MBEDTLS_ASYMMETRIC_CONTENT_LEN=y
+CONFIG_MBEDTLS_SSL_IN_CONTENT_LEN=16384
+CONFIG_MBEDTLS_SSL_OUT_CONTENT_LEN=4096
+
+# -----------------------------------------------------------------------------
+# HTTP client
+# -----------------------------------------------------------------------------
+CONFIG_ESP_TLS_USING_MBEDTLS=y
+CONFIG_ESP_HTTP_CLIENT_ENABLE_HTTPS=y
+
+# -----------------------------------------------------------------------------
+# FreeRTOS / lwIP
+#
+# FREERTOS_HZ=1000 is carried over from the board's other examples: the
+# esp-hosted transport is much better behaved at 1 ms tick granularity.
+# -----------------------------------------------------------------------------
+CONFIG_FREERTOS_HZ=1000
+CONFIG_LWIP_MAX_SOCKETS=16
+
+# The main task drives TLS, JSON and image decoding; the default 3.5 KB stack
+# is not enough for mbedTLS on top of the rest.
+CONFIG_ESP_MAIN_TASK_STACK_SIZE=8192
+
+# -----------------------------------------------------------------------------
+# Logging
+# -----------------------------------------------------------------------------
+CONFIG_LOG_DEFAULT_LEVEL_INFO=y
+CONFIG_LOG_MAXIMUM_LEVEL_DEBUG=y
+
+# -----------------------------------------------------------------------------
+# FATFS (micro-SD image cache)
+#
+# The cache is keyed on the server's `filename`, which is longer than 8.3 and
+# mixed case, so long filenames are not optional here - without them the names
+# would be silently mangled and every lookup would miss. LFN_HEAP keeps the
+# 255-byte working buffer off the stack.
+#
+# SNTP sets the clock before anything is written, so directory timestamps are
+# real dates and the cache's oldest-first pruning is meaningful.
+# -----------------------------------------------------------------------------
+CONFIG_FATFS_LFN_HEAP=y
+CONFIG_FATFS_MAX_LFN=255

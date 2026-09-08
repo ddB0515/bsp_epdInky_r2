@@ -1,0 +1,108 @@
+# =============================================================================
+# epdInky ESP32-P4/C6 rev.2 - ESP32-P4 specific configuration
+#
+# Applied on top of sdkconfig.defaults when building for esp32p4. Same rules as
+# that file: this is source of truth, `sdkconfig` is generated.
+#
+# Values marked [HW] are dictated by the schematic and must not be changed
+# without a board revision.
+# =============================================================================
+
+# -----------------------------------------------------------------------------
+# Silicon revision gating
+#
+# [HW] This board is built around a pre-v3.0 ESP32-P4 (the part fitted reads as
+# v1.0). ESP-IDF v6 defaults to a minimum of v3.1, and the two families are not
+# compatible - the bootloader refuses to run:
+#
+#   'bootloader/bootloader.bin' requires chip revision in range [v3.1 - v3.99]
+#   (this chip is revision v1.0)
+#
+# Note also the schematic warning on package pin 54 (VDD_HP_1): "Check pin 54
+# for revision > 3.0, under 3.0 leave it NC". The max revision is pinned as well
+# so a newer part is rejected at boot rather than left to misbehave.
+#
+# REV_MIN_100 is gated behind SELECTS_REV_LESS_V3, so both are needed.
+# -----------------------------------------------------------------------------
+CONFIG_ESP32P4_SELECTS_REV_LESS_V3=y
+CONFIG_ESP32P4_REV_MIN_100=y
+CONFIG_ESP32P4_REV_MIN_FULL=100
+CONFIG_ESP_REV_MIN_FULL=100
+CONFIG_ESP32P4_REV_MAX_FULL=199
+CONFIG_ESP_REV_MAX_FULL=199
+CONFIG_ESP_EFUSE_BLOCK_REV_MIN_FULL=0
+CONFIG_ESP_EFUSE_BLOCK_REV_MAX_FULL=199
+
+# The on-chip ECDSA accelerator only exists on P4 v3.0 and later, but the
+# mbedTLS option is gated on SOC_ECDSA_SUPPORTED (the family, not the revision)
+# and so defaults to y here. On this part ecdsa_ll_is_supported() is false, the
+# PSA driver returns NOT_SUPPORTED and mbedTLS falls back to software - correct,
+# but it logs at error level on every TLS handshake:
+#
+#   E psa_crypto_driver_esp_ecdsa: ECDSA peripheral not supported on this chip revision
+#
+# Turning it off removes the driver and the noise. Nothing else changes: the
+# software implementation was already doing the work.
+CONFIG_MBEDTLS_HARDWARE_ECDSA_VERIFY=n
+
+# -----------------------------------------------------------------------------
+# PSRAM
+#
+# [HW] 32 MB of octal ("hex" mode on the P4) PSRAM at 200 MHz.
+#
+# The 4bpp framebuffer for a 1872x1404 panel is 1.31 MB, and a differential
+# refresh needs the current frame plus the previous one, so the display path
+# alone wants ~2.6 MB. Downloaded images and the TLS session add to that. All of
+# it lives here; internal RAM stays free for the stack and DMA descriptors.
+#
+# Losing these turns off PSRAM entirely, which breaks every large buffer the
+# display path allocates.
+# -----------------------------------------------------------------------------
+CONFIG_SPIRAM=y
+CONFIG_SPIRAM_MODE_HEX=y
+CONFIG_SPIRAM_SPEED_200M=y
+CONFIG_SPIRAM_USE_MALLOC=y
+CONFIG_SPIRAM_MALLOC_ALWAYSINTERNAL=16384
+CONFIG_SPIRAM_MALLOC_RESERVE_INTERNAL=32768
+
+# -----------------------------------------------------------------------------
+# CPU
+# -----------------------------------------------------------------------------
+CONFIG_ESP_DEFAULT_CPU_FREQ_MHZ_360=y
+
+# -----------------------------------------------------------------------------
+# Remote Wi-Fi (esp_wifi_remote -> ESP32-C6) buffer tuning
+#
+# The radio is on the far side of an SDIO link, so throughput depends on having
+# enough buffers and AMPDU enabled in both directions. A full-panel image is a
+# few hundred kilobytes over TLS, which is the only transfer that matters here.
+# -----------------------------------------------------------------------------
+CONFIG_SLAVE_IDF_TARGET_ESP32C6=y
+CONFIG_WIFI_RMT_NVS_ENABLED=n
+CONFIG_WIFI_RMT_STATIC_RX_BUFFER_NUM=16
+CONFIG_WIFI_RMT_DYNAMIC_RX_BUFFER_NUM=64
+CONFIG_WIFI_RMT_DYNAMIC_TX_BUFFER_NUM=64
+CONFIG_WIFI_RMT_AMPDU_TX_ENABLED=y
+CONFIG_WIFI_RMT_TX_BA_WIN=32
+CONFIG_WIFI_RMT_AMPDU_RX_ENABLED=y
+CONFIG_WIFI_RMT_RX_BA_WIN=32
+
+# -----------------------------------------------------------------------------
+# lwIP tuning to match the SDIO-attached radio
+# -----------------------------------------------------------------------------
+CONFIG_LWIP_TCP_SND_BUF_DEFAULT=65534
+CONFIG_LWIP_TCP_WND_DEFAULT=65534
+CONFIG_LWIP_TCP_RECVMBOX_SIZE=64
+CONFIG_LWIP_UDP_RECVMBOX_SIZE=64
+CONFIG_LWIP_TCPIP_RECVMBOX_SIZE=64
+CONFIG_LWIP_TCP_SACK_OUT=y
+
+
+#
+# TRMNL firmware
+#
+# CONFIG_TRMNL_WAIT_DEEP_SLEEP is not set
+CONFIG_TRMNL_WAIT_IDLE=y
+# CONFIG_TRMNL_PANEL_ED133UT2 is not set
+# CONFIG_TRMNL_LOG_TEST_ON_BOOT is not set
+# end of TRMNL firmware

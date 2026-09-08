@@ -1,0 +1,73 @@
+# =============================================================================
+# epdInky ESP32-P4/C6 rev.2 - ESP32-P4 specific configuration
+#
+# Applied on top of sdkconfig.defaults when building for esp32p4.
+# See sdkconfig.defaults for the rules about editing these files.
+#
+# Identical to examples/idf_dsi_camera_preview/sdkconfig.defaults.esp32p4 -
+# none of this is camera-specific, it's the same silicon/PSRAM/radio board.
+#
+# Values marked [HW] are dictated by the schematic and must not be changed
+# without a board revision.
+# =============================================================================
+
+# -----------------------------------------------------------------------------
+# PSRAM - [HW] 32 MB hex (16-bit) PSRAM in the ESP32-P4 package
+#
+# Losing these turns off PSRAM entirely, which breaks the DPI frame buffer,
+# LVGL's draw buffers and the WebSocket client's working memory.
+# -----------------------------------------------------------------------------
+CONFIG_SPIRAM=y
+CONFIG_SPIRAM_MODE_HEX=y
+CONFIG_SPIRAM_SPEED_200M=y
+
+# -----------------------------------------------------------------------------
+# CPU
+# -----------------------------------------------------------------------------
+CONFIG_ESP_DEFAULT_CPU_FREQ_MHZ_360=y
+
+# -----------------------------------------------------------------------------
+# Silicon revision gating
+#
+# [HW] This board is built around a pre-v3.0 ESP32-P4. Note the schematic
+# warning on package pin 54 (VDD_HP_1): "Check pin 54 for revision > 3.0, under
+# 3.0 leave it NC". Keep the max revision pinned so a newer part is rejected at
+# boot rather than misbehaving.
+# -----------------------------------------------------------------------------
+CONFIG_ESP32P4_SELECTS_REV_LESS_V3=y
+CONFIG_ESP32P4_REV_MIN_100=y
+CONFIG_ESP32P4_REV_MIN_FULL=100
+CONFIG_ESP_REV_MIN_FULL=100
+CONFIG_ESP32P4_REV_MAX_FULL=199
+CONFIG_ESP_REV_MAX_FULL=199
+CONFIG_ESP_EFUSE_BLOCK_REV_MIN_FULL=0
+CONFIG_ESP_EFUSE_BLOCK_REV_MAX_FULL=199
+
+# -----------------------------------------------------------------------------
+# Remote Wi-Fi (esp_wifi_remote -> ESP32-C6) buffer tuning
+#
+# The radio is on the far side of an SDIO link, so throughput depends on
+# having enough buffers and AMPDU enabled in both directions. This firmware
+# holds a long-lived WebSocket connection open rather than making occasional
+# large transfers, so steady small-packet latency matters as much as burst
+# throughput here.
+# -----------------------------------------------------------------------------
+CONFIG_SLAVE_IDF_TARGET_ESP32C6=y
+CONFIG_WIFI_RMT_NVS_ENABLED=n
+CONFIG_WIFI_RMT_STATIC_RX_BUFFER_NUM=16
+CONFIG_WIFI_RMT_DYNAMIC_RX_BUFFER_NUM=64
+CONFIG_WIFI_RMT_DYNAMIC_TX_BUFFER_NUM=64
+CONFIG_WIFI_RMT_AMPDU_TX_ENABLED=y
+CONFIG_WIFI_RMT_TX_BA_WIN=32
+CONFIG_WIFI_RMT_AMPDU_RX_ENABLED=y
+CONFIG_WIFI_RMT_RX_BA_WIN=32
+
+# -----------------------------------------------------------------------------
+# lwIP tuning to match the SDIO-attached radio
+# -----------------------------------------------------------------------------
+CONFIG_LWIP_TCP_SND_BUF_DEFAULT=65534
+CONFIG_LWIP_TCP_WND_DEFAULT=65534
+CONFIG_LWIP_TCP_RECVMBOX_SIZE=64
+CONFIG_LWIP_UDP_RECVMBOX_SIZE=64
+CONFIG_LWIP_TCPIP_RECVMBOX_SIZE=64
+CONFIG_LWIP_TCP_SACK_OUT=y

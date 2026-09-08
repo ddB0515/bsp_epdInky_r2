@@ -1,0 +1,6 @@
+version: "0.0.1"
+description: KXTJ3-1057 Accelerometers
+url: https://github.com/ddB0515/esp-bsp/tree/master/components/kxtj3_1057
+
+dependencies:
+  idf: ">=5.5"

@@ -1,0 +1,15 @@
+dependencies:
+  idf: ">=5.5"
+
+  # Official Espressif camera/video framework: provides the V4L2 interface,
+  # the MIPI-CSI video device and the ISP pipeline.
+  espressif/esp_video:
+    version: "^2.4.0"
+    rules:
+      - if: "target in [esp32p4]"
+
+  # Sensor drivers, including the SC2336 fitted to this board.
+  espressif/esp_cam_sensor:
+    version: "^2.4.0"
+    rules:
+      - if: "target in [esp32p4]"

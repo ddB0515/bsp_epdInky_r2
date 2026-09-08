@@ -1,0 +1,43 @@
+# =============================================================================
+# epdInky ESP32-P4 - Arduino + FastEPD example
+#
+# `sdkconfig` is generated: `idf.py fullclean` deletes it and menuconfig can
+# overwrite it, so anything needed to boot correctly lives here.
+# =============================================================================
+
+CONFIG_IDF_TARGET="esp32p4"
+
+# arduino-esp32 on the P4 is still behind the experimental flag.
+CONFIG_IDF_EXPERIMENTAL_FEATURES=y
+
+# UART0 on this board is GPIO37/38 - the TPS65185 WAKEUP and INT lines - so the
+# console has to be the USB Serial/JTAG device, not UART0. Driving those pins as
+# a UART would interfere with the PMIC.
+CONFIG_ESP_CONSOLE_USB_SERIAL_JTAG=y
+
+CONFIG_ESPTOOLPY_FLASHSIZE_16MB=y
+CONFIG_ESPTOOLPY_FLASHSIZE="16MB"
+CONFIG_ESPTOOLPY_FLASHMODE_DIO=y
+CONFIG_ESPTOOLPY_FLASHFREQ_80M=y
+
+# The Arduino core is large; the default 1 MB app partition does not fit it.
+CONFIG_PARTITION_TABLE_CUSTOM=y
+CONFIG_PARTITION_TABLE_CUSTOM_FILENAME="partitions.csv"
+
+CONFIG_FREERTOS_HZ=1000
+
+# arduino-esp32 3.3.x does not build cleanly against IDF 6.0 with warnings
+# promoted to errors - the failures are inside the Arduino core and the IDF HAL
+# headers (missing field initialisers, a discarded volatile), not in this
+# sketch. Turning the promotion off is what the other Arduino example here does
+# too; it does not silence the warnings, only stops them failing the build.
+CONFIG_COMPILER_DISABLE_DEFAULT_ERRORS=y
+
+# AUTOSTART_ARDUINO makes the core create the Arduino task and call
+# setup()/loop() for us, so the sketch needs no app_main(). Without it the build
+# fails at link time with an undefined reference to app_main.
+CONFIG_AUTOSTART_ARDUINO=y
+
+# Arduino's loopTask stack, which is where setup() and loop() run. FastEPD's
+# drawing and update calls run on this task, and the default 8 KB is tight.
+CONFIG_ARDUINO_LOOP_STACK_SIZE=16384

@@ -1,0 +1,21 @@
+version: "0.1.0"
+description: >-
+  Driver for raw E Ink (EPD) panels - bare glass with source/gate drivers and no
+  timing controller - using the ESP LCD i80 peripheral. Includes a multi-panel
+  catalogue, 16-level greyscale via temporal phases plus spatial dither, and a
+  4bpp framebuffer with text and image scaling.
+url: https://github.com/ddB0515/esp-bsp/tree/master/components/epd
+
+targets:
+  - esp32p4
+  - esp32s3
+  - esp32s2
+
+tags:
+  - epaper
+  - eink
+  - epd
+  - display
+
+dependencies:
+  idf: ">=6.0"

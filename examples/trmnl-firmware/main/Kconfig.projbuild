@@ -1,0 +1,103 @@
+menu "TRMNL firmware"
+
+choice TRMNL_WAIT_MODE
+    prompt "What the device does between cycles"
+    default TRMNL_WAIT_DEEP_SLEEP
+    help
+      Two builds of the same firmware, so this board's sleep current can be
+      measured by flashing one and then the other.
+
+      They are not equivalent: deep sleep costs the button. See the help on
+      each option.
+
+config TRMNL_WAIT_DEEP_SLEEP
+    bool "Deep sleep, timer wake only"
+    help
+      esp_deep_sleep_start() with a timer wake-up, as upstream does. The SD
+      card is unmounted and unpowered, Wi-Fi is torn down and the TPS65185 is
+      put to sleep first. Each cycle is then a fresh boot, so expect about
+      two seconds of start-up before the request goes out.
+
+      KNOWN BAD ON ESP32-P4 CHIP REVISION 1.0/1.3: these silicon revisions
+      have documented deep-sleep issues, fixed from revision v3.0 onward. If
+      that's the chip on your board, use "Idle, button works" below instead -
+      this is a hardware erratum to wait out on a fixed-revision board, not
+      something this firmware can fix around. Check the chip revision with
+      `idf.py -p PORT monitor` at boot, or `esptool.py chip_id`.
+
+      THE BUTTON DOES NOT WORK IN THIS MODE. The P4 has 16 RTC-capable GPIOs
+      (0-15) and the button is on GPIO35, so it cannot drive an ext0/ext1
+      wake. Nothing polls it while the CPU is off; a press does nothing until
+      the timer fires. Press RESET for an immediate refresh instead.
+
+      Cross-cycle state (retry counters, the "needs a clean" flag, the last
+      wake time) lives in RTC fast memory, which survives the sleep. The
+      refresh interval and the device credentials are in NVS and survive
+      anything.
+
+config TRMNL_WAIT_IDLE
+    bool "Idle, button works"
+    help
+      vTaskDelay() in 100 ms steps with the radio associated and the CPU
+      clocked, polling the button so a press starts a cycle immediately.
+
+      This is not a power-saving mode - it is the reference to measure deep
+      sleep against, and the mode to use on a bench supply when the button
+      matters more than the battery.
+
+endchoice
+
+choice TRMNL_PANEL
+    prompt "Which e-paper panel is physically connected"
+    default TRMNL_PANEL_ED103TC2
+    help
+      trmnl.app only renders content for panel resolutions it knows about,
+      reported via the Model/Width/Height headers - see TRMNL_DISPLAY_WIDTH/
+      HEIGHT in trmnl_config.h, which do NOT change with this choice. Picking
+      a panel the server doesn't support here changes what this firmware
+      does with what arrives, not what the server sends: the image is still
+      decoded at the reported resolution, then scaled to fit whatever panel
+      is actually connected via the same epd_fb_blit_fit_rot()/
+      epd_fb_blit_1bpp_fit() path that already handles any size mismatch
+      (trmnl_image.c, trmnl_bmp_render()) - there is no separate "scaling
+      mode" to turn on, this just puts a differently-sized framebuffer in
+      front of it.
+
+config TRMNL_PANEL_ED103TC2
+    bool "ED103TC2 - 10.3\", 1872x1404 (trmnl.app's own panel)"
+    help
+      What P0.0 and P1.2 verified against. Native resolution matches exactly
+      what the server renders, so the fit path never actually triggers on
+      real server content - only on locally-sized things like a status
+      screen, which is already sized to the framebuffer either way.
+
+config TRMNL_PANEL_ED133UT2
+    bool "ED133UT2 - 13.3\", 2200x1650 (bench test - trmnl.app doesn't render for this size)"
+    help
+      Every server-sent frame is smaller than this panel in both dimensions
+      (1872x1404 into 2200x1650), so every real cycle takes the upscale path:
+      letterboxed, aspect preserved, pixel-repeat rather than interpolated
+      (see epd_fb_blit_fit_rot()'s own doc comment on upscale quality).
+      Watch the log for "fitting" - trmnl_image.c logs it whenever a decode
+      doesn't match the framebuffer 1:1.
+
+endchoice
+
+config TRMNL_LOG_TEST_ON_BOOT
+    bool "Send a test /api/log entry every cycle (debug)"
+    default n
+    help
+      submit_log() in main.c only fires from a real failure
+      (report_failure()'s call sites), which is awkward to trigger on demand
+      without either breaking a working device or waiting for the real
+      server to misbehave. This sends one harmless test entry to the real
+      /api/log endpoint right after Wi-Fi and registration succeed each
+      cycle, so the whole path - serialization, headers, POST, the server's
+      actual response - can be checked against a real account without
+      engineering a fake outage.
+
+      Off by default and meant to be turned back off once you've confirmed
+      it: this is a debug aid, not a feature, and it POSTs to the real
+      server every single cycle for as long as it's enabled.
+
+endmenu

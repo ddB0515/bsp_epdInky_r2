@@ -1,0 +1,22 @@
+dependencies:
+  idf: ">=5.5"
+
+  # JSON for the /api/setup and /api/display responses. Deliberately cJSON and
+  # not ArduinoJson: this port carries no Arduino code at all.
+  espressif/cjson: "^1.7.18"
+
+# Everything else this project originally expected to need from the registry
+# turned out to have a lighter in-tree answer instead, once P0.0 settled on
+# PNG and decision 9 put the image cache on the SD card rather than a flash
+# filesystem:
+#
+#   joltwallet/littlefs  -> not needed: the cache lives on FATFS (main/trmnl_cache.c)
+#   espressif/libpng/zlib -> not needed: main/trmnl_image.c decodes PNG over
+#                            the ESP32-P4 boot ROM's own tinfl_decompress
+#   espressif/qrcode     -> not needed: main/qrcodegen.c vendors the same
+#                           underlying library (Nayuki's, de-LVGL'd) directly,
+#                           since only the raw bit matrix is wanted, not a
+#                           console renderer
+#
+# JPEG needs no component either: the ESP32-P4 has a hardware decoder behind
+# driver/jpeg_decode.h.

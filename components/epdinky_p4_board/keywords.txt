@@ -1,0 +1,52 @@
+#######################################
+# Syntax colouring for the EpdInky library
+#######################################
+
+#######################################
+# Datatypes (KEYWORD1)
+#######################################
+
+EpdInkyBoard	KEYWORD1
+EpdInky	KEYWORD1
+EpdInkyOptions	KEYWORD1
+EpdInkyAccel	KEYWORD1
+EpdInkyTime	KEYWORD1
+EpdInkyBattery	KEYWORD1
+
+#######################################
+# Methods and Functions (KEYWORD2)
+#######################################
+
+begin	KEYWORD2
+end	KEYWORD2
+lastError	KEYWORD2
+hasAccelerometer	KEYWORD2
+hasRtc	KEYWORD2
+hasFuelGauge	KEYWORD2
+hasExpander	KEYWORD2
+hasPmic	KEYWORD2
+readAccel	KEYWORD2
+readTime	KEYWORD2
+setTime	KEYWORD2
+readBattery	KEYWORD2
+buttonPressed	KEYWORD2
+expanderWrite	KEYWORD2
+expanderRead	KEYWORD2
+railsPowerUp	KEYWORD2
+railsPowerDown	KEYWORD2
+sdBegin	KEYWORD2
+sdEnd	KEYWORD2
+sdMounted	KEYWORD2
+wifiBegin	KEYWORD2
+wifiScan	KEYWORD2
+wifiScanPrint	KEYWORD2
+wifiConnect	KEYWORD2
+wifiDisconnect	KEYWORD2
+wifiConnected	KEYWORD2
+wifiLocalIP	KEYWORD2
+bleBegin	KEYWORD2
+bleScan	KEYWORD2
+bleScanPrint	KEYWORD2
+i2cScan	KEYWORD2
+handles	KEYWORD2
+i2cBus	KEYWORD2

@@ -1,0 +1,154 @@
+# =============================================================================
+# epdInky ESP32-P4/C6 rev.2 - board configuration (target independent)
+#
+# THIS FILE IS THE SOURCE OF TRUTH FOR BOARD SETTINGS.
+#
+# `sdkconfig` is a generated file: `idf.py fullclean` deletes it and menuconfig
+# can overwrite it, so anything the board needs to boot correctly must live here
+# (or in sdkconfig.defaults.esp32p4) and never only in sdkconfig.
+#
+#   sdkconfig.defaults          - applied for every target
+#   sdkconfig.defaults.esp32p4  - applied on top when building for esp32p4
+#
+# After editing either file run `idf.py reconfigure`, or delete sdkconfig and
+# rebuild, for the changes to take effect.
+#
+# Values marked [HW] are dictated by the schematic and must not be changed
+# without a board revision.
+# =============================================================================
+
+CONFIG_IDF_TARGET="esp32p4"
+CONFIG_IDF_EXPERIMENTAL_FEATURES=y
+
+# -----------------------------------------------------------------------------
+# Console
+#
+# [HW] The ESP32-P4 default UART0 console pins are GPIO37/GPIO38 - exactly the
+# TPS65185 WAKEUP and INT lines on this board. With the UART console enabled,
+# every log line toggles the PMIC wake input. Use USB Serial/JTAG instead and
+# leave UART0 unused.
+# -----------------------------------------------------------------------------
+CONFIG_ESP_CONSOLE_USB_SERIAL_JTAG=y
+
+# -----------------------------------------------------------------------------
+# SPI flash - [HW] U6 is a Winbond W25Q128JVS (128 Mbit = 16 MB)
+#
+# The size must match the part or the bootloader warns and the upper flash is
+# unusable. All four IO lines (FLASH_D/Q/WP/HOLD) are routed, so QIO is possible;
+# DIO is pinned here because it is the known-good setting for this board.
+# -----------------------------------------------------------------------------
+CONFIG_ESPTOOLPY_FLASHSIZE_16MB=y
+CONFIG_ESPTOOLPY_FLASHSIZE="16MB"
+CONFIG_ESPTOOLPY_FLASHMODE_DIO=y
+CONFIG_ESPTOOLPY_FLASHFREQ_80M=y
+
+# -----------------------------------------------------------------------------
+# Filesystem / storage
+# -----------------------------------------------------------------------------
+CONFIG_FATFS_VFS_FSTAT_BLKSIZE=4096
+
+# -----------------------------------------------------------------------------
+# Wi-Fi / Bluetooth via the on-board ESP32-C6 (esp-hosted over SDIO)
+#
+# [HW] All pin numbers below come from the schematic netlist:
+#   SDIO slot 1: CLK=GPIO18 CMD=GPIO19 D0=GPIO23 D1=GPIO22 D2=GPIO21 D3=GPIO20
+#   C6 EN      : GPIO54
+#
+# The C6 EN line has a 10K pull-up (R43), so the radio is enabled by default.
+# RESET_ACTIVE_HIGH=y is correct for an EN pin: esp-hosted pulses
+# HIGH -> LOW -> HIGH and leaves it HIGH. Do not drive GPIO54 low from
+# application code or the radio stays in reset.
+# -----------------------------------------------------------------------------
+CONFIG_ESP_HOSTED_ENABLED=y
+CONFIG_ESP_HOSTED_P4_DEV_BOARD_NONE=y
+CONFIG_ESP_HOSTED_PRIV_SDIO_OPTION=y
+CONFIG_ESP_HOSTED_PRIV_SPI_HD_OPTION=y
+CONFIG_ESP_HOSTED_SDIO_HOST_INTERFACE=y
+CONFIG_ESP_HOSTED_IDF_SLAVE_TARGET="esp32c6"
+CONFIG_ESP_HOSTED_SDIO_RESET_ACTIVE_HIGH=y
+CONFIG_ESP_HOSTED_SDIO_OPTIMIZATION_RX_STREAMING_MODE=y
+CONFIG_ESP_HOSTED_SDIO_SLOT_1=y
+CONFIG_ESP_HOSTED_SDIO_SLOT=1
+CONFIG_ESP_HOSTED_SDIO_4_BIT_BUS=y
+CONFIG_ESP_HOSTED_SDIO_BUS_WIDTH=4
+CONFIG_ESP_HOSTED_SDIO_CLOCK_FREQ_KHZ=40000
+
+# Allow the full GPIO range so the pin choices below are accepted
+CONFIG_ESP_HOSTED_SDIO_CMD_GPIO_RANGE_MIN=0
+CONFIG_ESP_HOSTED_SDIO_CMD_GPIO_RANGE_MAX=100
+CONFIG_ESP_HOSTED_SDIO_CLK_GPIO_RANGE_MIN=0
+CONFIG_ESP_HOSTED_SDIO_CLK_GPIO_RANGE_MAX=100
+CONFIG_ESP_HOSTED_SDIO_D0_GPIO_RANGE_MIN=0
+CONFIG_ESP_HOSTED_SDIO_D0_GPIO_RANGE_MAX=100
+CONFIG_ESP_HOSTED_SDIO_D1_GPIO_RANGE_MIN=0
+CONFIG_ESP_HOSTED_SDIO_D1_GPIO_RANGE_MAX=100
+CONFIG_ESP_HOSTED_SDIO_D2_GPIO_RANGE_MIN=0
+CONFIG_ESP_HOSTED_SDIO_D2_GPIO_RANGE_MAX=100
+CONFIG_ESP_HOSTED_SDIO_D3_GPIO_RANGE_MIN=0
+CONFIG_ESP_HOSTED_SDIO_D3_GPIO_RANGE_MAX=100
+CONFIG_ESP_HOSTED_SDIO_RESET_SLAVE_GPIO_MIN=0
+CONFIG_ESP_HOSTED_SDIO_RESET_SLAVE_GPIO_MAX=100
+
+# [HW] Slot-1 pin assignment (private symbols the visible ones derive from)
+CONFIG_ESP_HOSTED_PRIV_SDIO_PIN_CLK_SLOT_1=18
+CONFIG_ESP_HOSTED_PRIV_SDIO_PIN_CMD_SLOT_1=19
+CONFIG_ESP_HOSTED_PRIV_SDIO_PIN_D0_SLOT_1=23
+CONFIG_ESP_HOSTED_PRIV_SDIO_PIN_D1_4BIT_BUS_SLOT_1=22
+CONFIG_ESP_HOSTED_PRIV_SDIO_PIN_D2_4BIT_BUS_SLOT_1=21
+CONFIG_ESP_HOSTED_PRIV_SDIO_PIN_D3_4BIT_BUS_SLOT_1=20
+
+# [HW] Effective pin assignment
+CONFIG_ESP_HOSTED_SDIO_GPIO_RESET_SLAVE=54
+CONFIG_ESP_HOSTED_SDIO_PIN_CLK=18
+CONFIG_ESP_HOSTED_SDIO_PIN_CMD=19
+CONFIG_ESP_HOSTED_SDIO_PIN_D0=23
+CONFIG_ESP_HOSTED_SDIO_PIN_D1=22
+CONFIG_ESP_HOSTED_SDIO_PRIV_PIN_D1_4BIT_BUS=22
+CONFIG_ESP_HOSTED_SDIO_PIN_D2=21
+CONFIG_ESP_HOSTED_SDIO_PIN_D3=20
+
+CONFIG_ESP_HOSTED_SDIO_TX_Q_SIZE=20
+CONFIG_ESP_HOSTED_SDIO_RX_Q_SIZE=20
+CONFIG_ESP_HOSTED_SDIO_RESET_DELAY_MS=1500
+
+# -----------------------------------------------------------------------------
+# Partition table
+#
+# The default single-app layout gives the application only 1 MB, which Wi-Fi
+# plus BLE overruns. partitions.csv enlarges it to 4 MB while keeping the nvs
+# and phy_init offsets unchanged so stored data survives.
+# -----------------------------------------------------------------------------
+CONFIG_PARTITION_TABLE_CUSTOM=y
+CONFIG_PARTITION_TABLE_CUSTOM_FILENAME="partitions.csv"
+
+# -----------------------------------------------------------------------------
+# Bluetooth LE
+#
+# [HW] The ESP32-P4 has no radio: the BLE controller lives on the ESP32-C6 and
+# is reached over the same esp-hosted SDIO link as Wi-Fi, using HCI over SDIO.
+# So the P4 runs the NimBLE *host* only, with the controller disabled
+# (BT_CONTROLLER_ENABLED depends on SOC_BT_SUPPORTED, which the P4 lacks).
+# -----------------------------------------------------------------------------
+CONFIG_BT_ENABLED=y
+CONFIG_BT_NIMBLE_ENABLED=y
+CONFIG_BT_CONTROLLER_DISABLED=y
+# With no local controller, NimBLE defaults to a UART HCI transport. Turn it off
+# so the esp-hosted VHCI transport can be selected instead - without this,
+# ESP_HOSTED_ENABLE_BT_NIMBLE is not even selectable.
+CONFIG_BT_NIMBLE_TRANSPORT_UART=n
+CONFIG_ESP_HOSTED_ENABLE_BT_NIMBLE=y
+CONFIG_ESP_HOSTED_NIMBLE_HCI_VHCI=y
+
+# NimBLE needs a 1 ms tick. At the IDF default of 100 Hz the 10 ms granularity
+# makes HCI command/acknowledgement handling time out (BLE_HS_ETIMEOUT_HCI),
+# so the host never syncs with the remote controller.
+CONFIG_FREERTOS_HZ=1000
+
+# Scanning is a central-role operation; no need for the peripheral role.
+CONFIG_BT_NIMBLE_ROLE_CENTRAL=y
+CONFIG_BT_NIMBLE_ROLE_OBSERVER=y
+
+# -----------------------------------------------------------------------------
+# Networking extras
+# -----------------------------------------------------------------------------
+CONFIG_HTTPD_WS_SUPPORT=y

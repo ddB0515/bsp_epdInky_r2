@@ -1,0 +1,8 @@
+dependencies:
+  idf: ">=5.5"
+
+  # LVGL is driven directly rather than through espressif/esp_lvgl_port: that
+  # component assumes a conventional fast display and offers nothing useful for
+  # a panel whose refresh policy is the whole problem.
+  lvgl/lvgl:
+    version: "^9.3.0"

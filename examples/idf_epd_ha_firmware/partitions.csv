@@ -1,0 +1,17 @@
+# HA firmware on epdInky ESP32-P4/C6 rev.2 - partition table
+#
+# Flash is 16 MB (W25Q128JVS). No OTA slots: this v1 example has no update
+# mechanism (unlike the trmnl-firmware example, whose two ota_* slots exist
+# for TRMNL's server-driven firmware update, which has no equivalent here),
+# and no SD-card image cache to reserve space for either - every cycle
+# fetches a fresh dashboard image over HTTP rather than storing one between
+# wakes. That leaves just NVS, PHY calibration data, one factory app slot,
+# and a spare data partition for whatever a fork of this example might want
+# later (a settings blob, a small asset, etc. - unused by this firmware as
+# shipped).
+#
+# Name,     Type, SubType, Offset,   Size,     Flags
+nvs,        data, nvs,     0x9000,   0x6000,
+phy_init,   data, phy,     0xf000,   0x1000,
+factory,    app,  factory, 0x10000,  0x300000,
+storage,    data, spiffs,  0x310000, 0xCF0000,
