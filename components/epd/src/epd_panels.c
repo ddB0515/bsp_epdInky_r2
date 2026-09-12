@@ -1937,3 +1937,201 @@ const epd_panel_def_t epd_panel_eink_ed078kc1 = {
         .du_dark_threshold = 8,
     },
 };
+
+/*******************************************************************************
+ * E Ink ED140TT1 - 1440x300, 8-bit source bus, VCOM -1.80V (read from the
+ * panel's own FPC ribbon)
+ *
+ * A "bar" aspect panel like ED067KC1 - very short/wide (1440x300) rather
+ * than the roughly-square panels most of this file targets.
+ *
+ * width=1440/height=300 here are the ELECTRICAL scan direction, confirmed
+ * against the full datasheet's "CLOCK & DATA TIMING" diagram, which labels
+ * the source driver outputs explicitly as "OUT1~OUT1440" - 1440 source
+ * (data) columns, 300 gate (CKV-scanned) rows. This is NOT what the
+ * datasheet's own "Display Resolution: 300(H)x1440(V)" table entry
+ * suggests - that describes the panel's mechanical/mounting orientation,
+ * not scan direction, the exact same trap ED067KC1's own comment in this
+ * file already warns about ("width=1800/height=900 here are the ELECTRICAL
+ * scan direction... not the 900x1800 the mechanical spec's H/V labelling
+ * suggests").
+ *
+ * Pin 33 on the 40-pin FPC is a separate "Border" signal, not modelled in
+ * epd_board_config_t (no field for it) - typically tied to VCOM externally
+ * on the board. Worth checking that wiring; a floating border ring is a
+ * plausible source of edge-only artifacts.
+ *
+ * From the datasheet's AC characteristics table:
+ *
+ *   fckv    max 200 kHz -> ckv_flush_us = 3 gives a 6 us period (167 kHz),
+ *                          same figure as every other panel here.
+ *   twL/twH min 500 ns  -> ckv_low_us = 1 us, 2x margin - same reasoning as
+ *                          ED078KC1: no bring-up history yet to justify
+ *                          ED103TC2's own back-to-back-edges 0.
+ *   tSU/tH  min 100 ns, max twH-100 ns -> cleared by the microsecond-scale
+ *                          gate timings.
+ *   tcy     min 16.67 ns, no typical given -> pclk_hz = 20 MHz (tcy = 50 ns),
+ *                          the same conservative default ED103TC2/ED078KC1
+ *                          use absent a documented faster Mode for this
+ *                          panel.
+ *   tsu/th on D0..D7 (confirms the 8-bit bus), tstls/tstlh (SPH setup/hold)
+ *                       -> not separately modelled; peripheral-timed, same
+ *                          as every other panel here.
+ *   tLEdly  min 3.5*tcy -> 175 ns at 20 MHz. Satisfied with room to spare -
+ *                          LE only fires after the DMA-completion interrupt
+ *                          wakes the refresh task, microseconds away.
+ *   tLEw    40 ns (at VDD 2.73-3.6V) -> le_pulse_us = 0. An order of
+ *                          magnitude under the ~300 ns figure that forced
+ *                          ED052TC4/ED067KC1/ED078KC1/ES108FC2/ES120MC1 to
+ *                          widen this explicitly - 40 ns is already covered
+ *                          by construction, the same reasoning ED103TC2
+ *                          itself uses for le_pulse_us = 0.
+ *   tLEoff  min 200 ns  -> covered by the 1 us ckv_low_us gap after LE.
+ *   tout    max 12 us   -> row_period_us left at 0 (free-run). At 20 MHz an
+ *                          8-bit bus shifts this panel's 720 output bytes/row
+ *                          (1440 px, 2 px/byte) in ~36 us - already well
+ *                          past tout before the row period logic even gets
+ *                          involved, so there is nothing to pad. Contrast
+ *                          ES108FC2/ES120MC1, whose much faster clocks made
+ *                          the DMA phase alone faster than tout and forced
+ *                          row_period_us to be set explicitly.
+ *
+ * No full Timing Parameters table was supplied, but a "Frame Sync Length"
+ * diagram was given separately, explicitly labelling the SPV-low duration
+ * "t1" - the exact datasheet symbol spv_sync_lines is documented against
+ * (see epd_panel_def.h). That diagram draws t1 spanning two CKV pulses
+ * before the regular pulse train continues, so spv_sync_lines = 2 here (the
+ * same non-default value only ED115OC1 has otherwise needed).
+ *
+ * The diagram's own accompanying note - "after 5CKV, gate line is on" -
+ * checks out against that: frame_gate_start() in epd_display.c always walks
+ * a further fixed 3 pulses after the sync window before the gate reaches
+ * row 0, so 2 (spv_sync_lines) + 3 (fixed walk) = 5, matching the note
+ * exactly with frame_blank_lines left at its default 0 - no extra fudge
+ * needed. (An earlier version of this comment read the note alone, without
+ * yet having this diagram, and set spv_sync_lines = 5 outright - wrong, kept
+ * here as a record of the correction.)
+ *
+ * ckv_extra_us/interframe_us/discharge_frames still have nothing to derive
+ * them from beyond ED103TC2's own empirically-validated figures - copied as
+ * placeholders, same convention as ED078KC1's pending frame-level timing.
+ *
+ * Everything else - power sequencing, drive codes, orientation flags, the
+ * waveform/tone curve - is copied from ED103TC2 verbatim, per the same
+ * convention as every panel added since ED103TC2. All of it is UNVALIDATED
+ * for this panel's own ink/wiring: flags may need to change if the image
+ * comes out mirrored, and the waveform will need re-tuning once orientation
+ * is confirmed on real hardware.
+ ******************************************************************************/
+const epd_panel_def_t epd_panel_eink_ed140tt1 = {
+    .name      = "ED140TT1",
+
+    .width     = 1440,
+    .height    = 300,
+    .bus_width = 8,
+    .pclk_hz   = 20000000,
+    .vcom_mv   = 1860,          /* panel is marked -1.80V */
+    .flags     = EPD_PANEL_FLAG_MIRROR_Y,
+    .temp_compensation = true,
+    .line_padding_bytes = 16,   /* copied from ED103TC2; unconfirmed for this panel */
+
+    .power = {
+        .vee_strobe  = 0,
+        .vneg_strobe = 1,
+        .vpos_strobe = 2,
+        .vddh_strobe = 3,
+        .delay_per_strobe_ms = 9,
+    },
+
+    .codes = {
+        .no_drive = 0x00u,   /* grounded: settling scans only        */
+        .darken   = 0x01u,   /* VNEG                                 */
+        .lighten  = 0x02u,   /* VPOS                                 */
+        .hold     = 0x03u,   /* leave the pixel alone                */
+    },
+
+    .timing = {
+        .ckv_pre_spv_us   = 7,     /* copied from ED103TC2 - no Timing Parameters table supplied */
+        .spv_low_us       = 10,    /* copied from ED103TC2 - no Timing Parameters table supplied */
+        .ckv_post_spv_us  = 8,     /* copied from ED103TC2 - no Timing Parameters table supplied */
+        .spv_high_us      = 10,    /* copied from ED103TC2 - no Timing Parameters table supplied */
+        .ckv_extra_us     = 18,    /* copied from ED103TC2 - no Timing Parameters table supplied */
+        .spv_sync_lines   = 2,     /* datasheet "Frame Sync Length" diagram: t1 = 2 CKV lines - see note above */
+        .ckv_low_us       = 1,     /* twL/twH min 500 ns, 2x margin - see note above */
+        .le_pulse_us      = 0,     /* tLEw 40 ns - satisfied by construction, see note above */
+
+        .interframe_us    = 230,   /* copied from ED103TC2 - no Timing Parameters table supplied */
+        .row_period_us    = 0,     /* free-run; tout satisfied by construction at this clock/bus - see note above */
+        .ckv_flush_us     = 3,     /* keeps CKV inside its 200 kHz maximum */
+
+        .vcom_off_settle_ms     = 60,
+        .post_discharge_wait_ms = 500,
+        .global_discharge_ms    = 250,
+        .discharge_frames       = 0,
+    },
+
+    /* Copied from ED103TC2; re-tune against the bars/palette screens once the
+     * panel is confirmed working and orientation is settled. */
+    .wf = {
+        /* Raised 4 -> 8 phases (EPD_GC16_MAX_PHASES, the driver's ceiling):
+         * user-observed black still not dark enough under GC16 even after
+         * rebalancing gc16_level_energy - at 4 phases the blackest level
+         * already saturates all of them (energy 64 == the last cut), so
+         * there was no more darkening left to give it within that phase
+         * count. Doubling phases keeps the same 4x4-tiled-2x2 Bayer matrix
+         * (still spaced by max_bayer+1 = 16 per phase, per the cut-spacing
+         * rule in epd_panel_def.h) but doubles the total number of darken
+         * passes the blackest level can receive - the same "more total
+         * drive dose" fix as du_frames/init_group_frames above, this time
+         * for GC16. Doubles GC16 refresh time in exchange. */
+        .gc16_phases     = 8,
+        .gc16_phase_cut  = { 16, 32, 48, 64, 80, 96, 112, 128 },
+        .gc16_phase_order = { 0, 1, 2, 3, 4, 5, 6, 7 },
+
+        /* Same linear-ramp shape as before, doubled to span the new 0-128
+         * range instead of 0-64, so every level's phase count doubles along
+         * with the ceiling rather than only the blackest one. */
+        .gc16_level_energy = {
+            128, 120, 110, 102, 94, 86, 76, 68,
+             60,  52,  42,  34, 26, 18,  8,  0,
+        },
+
+        .bayer = {
+            /* classic 4x4 dither tiled 2x2: with cuts 16/32/48/64 each
+             * value appears four times in the 64 cells, so drive works
+             * out to energy/16 exactly as with a true 4x4 matrix */
+            {  0,  8,  2, 10,  0,  8,  2, 10 },
+            { 12,  4, 14,  6, 12,  4, 14,  6 },
+            {  3, 11,  1,  9,  3, 11,  1,  9 },
+            { 15,  7, 13,  5, 15,  7, 13,  5 },
+            {  0,  8,  2, 10,  0,  8,  2, 10 },
+            { 12,  4, 14,  6, 12,  4, 14,  6 },
+            {  3, 11,  1,  9,  3, 11,  1,  9 },
+            { 15,  7, 13,  5, 15,  7, 13,  5 },
+        },
+
+        /* init_group_frames raised 4 -> 8 (ED103TC2's own untuned value):
+         * user-observed ghosting on real hardware when switching between
+         * full-screen pages (old page's text ghosts through the new one) -
+         * i.e. EPD_WAVEFORM_INIT itself isn't fully clearing before the next
+         * page is drawn on top, the same "not enough drive" failure the
+         * comment above waveform_init() in epd_display.c documents measuring
+         * on ED103TC2 (2 groups/8 frames left ghosting, 4 groups/16 frames was
+         * clean). Doubling it here is the same experiment for this panel's
+         * own, still-uncharacterised ink. If ghosting persists, try 12 next;
+         * each step doubles INIT's clear time (~1.2 s at 4, so ~2.4 s at 8). */
+        .init_group_frames = 8,
+
+        /* du_frames raised 8 -> 16 (every other panel here still has
+         * ED103TC2's own untuned 8): user-observed ghosting on real hardware
+         * from DU transitions happening too fast for this panel's ink to
+         * fully switch before the driver moves on. du_frames is exactly the
+         * total-dwell knob for DU - the driver holds darken/lighten on a
+         * pixel for this many complete frame passes, so doubling it doubles
+         * how long each pixel is actually driven, at the cost of a slower
+         * update. If ghosting persists, try 24-32 next; if it disappears well
+         * before 16, it can come back down. */
+        .du_frames         = 16,
+        .du_dark_threshold = 8,
+    },
+};

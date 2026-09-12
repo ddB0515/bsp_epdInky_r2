@@ -155,6 +155,20 @@ extern const epd_panel_def_t epd_panel_eink_es120mc1;
  */
 extern const epd_panel_def_t epd_panel_eink_ed078kc1;
 
+/**
+ * E Ink ED140TT1 - 1440x300, 8-bit source bus, VCOM -1.80V (read from the
+ * panel's own FPC ribbon).
+ *
+ * A "bar" aspect panel like ED067KC1 - very short/wide rather than roughly
+ * square. spv_sync_lines = 2 (datasheet t1, from a "Frame Sync Length"
+ * diagram) - the same non-default value only ED115OC1 has otherwise needed.
+ * UNVALIDATED otherwise: no full Timing Parameters (FSL/FBL/FEL) table was
+ * supplied, so everything else beyond the AC characteristics table (clock,
+ * LE pulse width, row timing) is copied from ED103TC2. See the note above
+ * the definition in epd_panels.c before bring-up.
+ */
+extern const epd_panel_def_t epd_panel_eink_ed140tt1;
+
 #ifdef __cplusplus
 }
 #endif

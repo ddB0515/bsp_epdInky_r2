@@ -7,7 +7,7 @@ by this component.
 
 - 16-level greyscale (GC16) from temporal phases plus an 8×8 spatial dither
 - INIT (ghost-clearing) and DU (two-level) waveforms
-- A catalogue of twelve validated panels, 720×1280 up to 2760×2070, 8- and 16-bit
+- A catalogue of thirteen validated panels, 300×1440 up to 2760×2070, 8- and 16-bit
 - 4bpp framebuffer with drawing, text, and image scale/rotate
 - Temperature-compensated frame counts from the PMIC thermistor
 - Async row DMA overlapped with row construction
@@ -208,6 +208,7 @@ doesn't fix, try `bus16_low_byte_first`.
 | `epd_panel_eink_es108fc2` | 1920×1080 | 16 | 1600 |
 | `epd_panel_eink_es120mc1` | 2560×1600 | 16 | 1600 |
 | `epd_panel_eink_ed078kc1` | 1872×1404 | 16 | 1870 |
+| `epd_panel_eink_ed140tt1` | 1440×300 | 8 | 1800 |
 
 VCOM is a property of the **individual panel**, printed on its FPC ribbon, and
 is not portable even between two panels of the same model. Check yours rather
